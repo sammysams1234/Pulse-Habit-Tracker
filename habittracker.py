@@ -18,7 +18,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.stop()
 
 # Use the logged-in username as the unique user ID.
-user_id = st.session_state.username
+user_id = st.session_state.username  # Should be "sammysams1234"
 
 # --- Page Config ---
 st.set_page_config(page_title="Pulse", page_icon="assets/app_icon.png", layout="centered")
