@@ -17,57 +17,30 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.error("You must be logged in to view this page. Please go to the login page.")
     st.stop()
 
-user_id = st.session_state.username  # Use logged-in username as user_id
+# Use the logged-in username as the unique user ID.
+user_id = st.session_state.username
+
+# --- Page Config ---
+st.set_page_config(page_title="Pulse", page_icon="assets/app_icon.png", layout="centered")
+
+# --- Initialize Firebase (if not already initialized) ---
+if not firebase_admin._apps:
+    firebase_creds_json = os.environ.get("FIREBASE_CREDENTIALS")
+    database_url = os.environ.get("FIREBASE_DATABASE_URL")
+    if firebase_creds_json and database_url:
+        try:
+            cred = credentials.Certificate(json.loads(firebase_creds_json))
+            firebase_admin.initialize_app(cred, {"databaseURL": database_url})
+        except Exception as e:
+            st.error("Firebase initialization error: " + str(e))
+    else:
+        st.error("FIREBASE_CREDENTIALS and FIREBASE_DATABASE_URL must be set.")
 
 # --- Helper Function: Get Base64 Image ---
 def get_base64_image(image_path):
     with open(image_path, "rb") as img_file:
         encoded = base64.b64encode(img_file.read()).decode()
     return encoded
-
-# --- Firebase Admin Initialization ---
-if not firebase_admin._apps:
-    firebase_creds_json = os.environ.get("FIREBASE_CREDENTIALS")
-    if firebase_creds_json:
-        try:
-            firebase_creds_dict = json.loads(firebase_creds_json)
-        except Exception as e:
-            st.error("Error parsing FIREBASE_CREDENTIALS: " + str(e))
-        database_url = os.environ.get("FIREBASE_DATABASE_URL")
-        if not database_url:
-            st.error("FIREBASE_DATABASE_URL environment variable not set!")
-        else:
-            try:
-                cred = credentials.Certificate(firebase_creds_dict)
-                firebase_admin.initialize_app(cred, {"databaseURL": database_url})
-            except Exception as e:
-                st.error("Firebase initialization error: " + str(e))
-    else:
-        st.error("FIREBASE_CREDENTIALS environment variable not set!")
-
-# --- Page Configuration & Custom CSS ---
-st.set_page_config(page_title="Pulse", page_icon="assets/app_icon.png", layout="centered")
-st.markdown(
-    """
-    <style>
-    .reportview-container .main .block-container { padding-top: 1rem; }
-    .calendar-container { overflow-x: auto; padding-bottom: 1rem; }
-    .habit-column { min-width: 180px; text-align: left; font-weight: bold; padding-right: 10px; white-space: nowrap; }
-    .calendar-container button {
-         width: 50px !important; height: 50px !important; font-size: 24px !important;
-         padding: 0 !important; margin: 0 !important; line-height: 50px !important;
-         text-align: center !important; display: flex !important;
-         justify-content: center !important; align-items: center !important;
-         border-radius: 8px !important; border: 2px solid rgba(255, 255, 255, 0.2) !important;
-         background-color: transparent !important;
-    }
-    .calendar-container button span {
-         display: flex !important; justify-content: center !important; align-items: center !important;
-         width: 100% !important; height: 100% !important;
-    }
-    </style>
-    """, unsafe_allow_html=True,
-)
 
 # --- Configuration & Data Persistence ---
 OUTCOME_COLORS = {"succeeded": "#4BB543", "failed": "transparent"}
@@ -87,6 +60,7 @@ def load_user_data(user_id):
     if "streaks" not in data or not isinstance(data["streaks"], dict):
         data["streaks"] = {}
         ref.child("streaks").set(data["streaks"])
+    # Optional: Migrate habit names if needed.
     if "Sleeping before 12" in data["habits"]:
         data["habits"]["Sleep"] = data["habits"].pop("Sleeping before 12")
         ref.child("habits").set(data["habits"])
@@ -176,7 +150,7 @@ today_str = today.strftime("%Y-%m-%d")
 for habit in st.session_state.data["habits"]:
     update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
 
-# --- Page Header ---
+# --- Page Header: Logo & Animated Messages ---
 base64_image = get_base64_image("assets/app_icon.png")
 header_html = f"""
 <div style="display: flex; align-items: center; margin-bottom: 20px;">
