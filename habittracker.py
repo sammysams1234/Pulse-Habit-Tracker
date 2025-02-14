@@ -45,7 +45,7 @@ if openai.api_key is None:
 # LOGIN & REGISTRATION (Always the FIRST screen)
 # =====================================================
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    st.title("Welcome! Please Login or Create an Account")
+    st.title("Welcome TO Pulse Habit Tracking! Please Login or Create an Account")
 
     # --- Helper Functions for Firebase User Management ---
     def register_user(username, name, hashed_pw):
@@ -75,7 +75,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                 return False, None
 
     # --- UI: Choose to Login or Register ---
-    action = st.radio(["Login", "Register"])
+    action = st.radio("Select Action", ["Login", "Register"])
 
     if action == "Register":
         st.subheader("Create an Account")
