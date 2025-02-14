@@ -41,6 +41,15 @@ openai.api_key = os.environ.get("OPENAI_API_KEY")
 if openai.api_key is None:
     st.warning("OpenAI API key is not set in the environment. Journal summarization will not work.")
 
+def get_base64_image(image_path):
+    try:
+        with open(image_path, "rb") as img_file:
+            encoded = base64.b64encode(img_file.read()).decode()
+        return encoded
+    except Exception as e:
+        st.error(f"Error loading image at {image_path}: {e}")
+        return ""
+
 # =====================================================
 # LOGIN & REGISTRATION (Always the FIRST screen)
 # =====================================================
