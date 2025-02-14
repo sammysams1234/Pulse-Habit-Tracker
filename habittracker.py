@@ -101,17 +101,15 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
         if "credentials" in data:
             return False  # User already exists.
         else:
-            # Encrypt the username and name
-            encrypted_username = fernet.encrypt(username.encode()).decode()
+            # Encrypt the user's name only (username is used as the key)
             encrypted_name = fernet.encrypt(name.encode()).decode()
             
             # Save credentials (password is hashed)
             data["credentials"] = {
-                "username": encrypted_username,
                 "name": encrypted_name,
                 "password": hashed_pw
             }
-            # Instead of separate nodes, combine all other user data into one encrypted blob.
+            # Combine all other user data into one encrypted blob.
             initial_data = {"habits": {}, "goals": {}, "streaks": {}, "journal": {}}
             data["data"] = encrypt_json(initial_data)
             ref.set(data)
