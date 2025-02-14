@@ -80,7 +80,6 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
             data["habits"] = {}
             data["streaks"] = {}
             data["journal"] = {}
-            data["todo"] = {}  # Initialize the to-do list
             ref.set(data)
             return True
 
@@ -174,9 +173,6 @@ def load_user_data(user_id):
     if "journal" not in data or not isinstance(data["journal"], dict):
         data["journal"] = {}
         ref.child("journal").set(data["journal"])
-    if "todo" not in data or not isinstance(data["todo"], dict):
-        data["todo"] = {}
-        ref.child("todo").set(data["todo"])
     if "Sleeping before 12" in data["habits"]:
         data["habits"]["Sleep"] = data["habits"].pop("Sleeping before 12")
         ref.child("habits").set(data["habits"])
@@ -188,8 +184,6 @@ def save_user_data(user_id, data):
     ref.child("goals").set(data["goals"])
     if "streaks" in data:
         ref.child("streaks").set(data["streaks"])
-    if "todo" in data:
-        ref.child("todo").set(data["todo"])
 
 def shift_month(date_obj, delta):
     year = date_obj.year
@@ -385,6 +379,7 @@ if page == "Habit Tracker 📆":
     # -------------------------------
     # Manage Habits Section
     # -------------------------------
+    # Expand the habit manager if no habits exist.
     with st.expander("Manage Habits", expanded=False):
         st.subheader("Add Habit")
         new_habit = st.text_input("Habit", key="new_habit_input")
@@ -466,43 +461,10 @@ if page == "Habit Tracker 📆":
     st.markdown('</div>', unsafe_allow_html=True)
 
     # -------------------------------
-    # To Do List Section
-    # -------------------------------
-    st.markdown("---")
-    st.markdown("### To Do List")
-    # Input to add a new task
-    new_task = st.text_input("New Task", key="new_todo_input")
-    if st.button("Add Task"):
-        new_task = new_task.strip()
-        if new_task:
-            task_id = str(int(datetime.datetime.now().timestamp()))
-            st.session_state.data["todo"][task_id] = {"task": new_task, "completed": False}
-            db.reference(f"users/{user_id}/todo").child(task_id).set({"task": new_task, "completed": False})
-            st.success("Task added!")
-        else:
-            st.error("Please enter a task.")
-
-    # Display existing tasks with checkboxes and delete options
-    tasks_to_delete = []
-    for task_id, task_obj in list(st.session_state.data["todo"].items()):
-        col1, col2, col3 = st.columns([0.1, 0.7, 0.2])
-        completed = task_obj.get("completed", False)
-        new_completed = col1.checkbox("", value=completed, key=f"todo_{task_id}")
-        if new_completed != completed:
-            st.session_state.data["todo"][task_id]["completed"] = new_completed
-            db.reference(f"users/{user_id}/todo").child(task_id).update({"completed": new_completed})
-        col2.write(task_obj.get("task", ""))
-        if col3.button("Delete", key=f"delete_{task_id}"):
-            tasks_to_delete.append(task_id)
-    for task_id in tasks_to_delete:
-        st.session_state.data["todo"].pop(task_id, None)
-        db.reference(f"users/{user_id}/todo").child(task_id).delete()
-        st.experimental_rerun()
-
-    # -------------------------------
     # Analytics Section
     # -------------------------------
     st.markdown("---")
+    # Container for the analytics filter dropdown:
     with st.container():
         st.markdown("### Analytics")
         view_option = st.selectbox(
