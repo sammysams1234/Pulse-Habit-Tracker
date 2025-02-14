@@ -16,7 +16,7 @@ import base64
 # Preconfigured user details (for demo purposes)
 names = ["Alice Example", "Bob Example"]
 usernames = ["alice", "bob"]
-passwords = ["password123", "mypassword"]  # Demo plain-text passwords
+passwords = ["password123", "mypassword"]  # Demo plain-text passwords; do not use plain text in production!
 hashed_passwords = stauth.Hasher(passwords).generate()
 
 credentials = {
