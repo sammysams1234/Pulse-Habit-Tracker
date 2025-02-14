@@ -145,7 +145,13 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                 hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
                 success = register_user(username, display_name, hashed_pw)
                 if success:
-                    st.success("Account created successfully! Please switch to the Login tab and log in.")
+                    # Auto-login the user after successful registration.
+                    st.session_state.logged_in = True
+                    st.session_state.username = username
+                    st.session_state.name = display_name
+                    st.session_state.page = "Pulse"  # Set default page to Pulse.
+                    st.success("Account created successfully! You are now logged in.")
+                    st.experimental_rerun()  # Rerun to load the Pulse page.
                 else:
                     st.error("Username already exists. Please choose another.")
 
@@ -386,7 +392,7 @@ if page == "Pulse":
     with st.expander("Manage Habits", expanded=False):
         st.subheader("Add Habit")
         new_habit = st.text_input("Habit", key="new_habit_input")
-        new_goal = st.number_input("Set Goal", min_value=1, value=1, key="new_goal_input")
+        new_goal = st.number_input("Target per week", min_value=1, value=1, key="new_goal_input")
         if st.button("Add Habit"):
             new_habit = new_habit.strip()
             if not new_habit:
@@ -406,11 +412,11 @@ if page == "Pulse":
                 current_goal = int(st.session_state.data["goals"].get(habit, 0))
                 col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
                 col1.markdown(f"**{habit}**")
-                new_goal_val = st.number_input("Goal", min_value=1, value=current_goal, key=f"edit_goal_{habit}")
+                new_goal_val = st.number_input("Target per week", min_value=1, value=current_goal, key=f"edit_goal_{habit}")
                 if col3.button("Update", key=f"update_goal_{habit}"):
                     st.session_state.data["goals"][habit] = int(new_goal_val)
                     save_user_data(user_id, st.session_state.data)
-                    st.success(f"Updated goal for '{habit}' to {new_goal_val}!")
+                    st.success(f"Updated target for '{habit}' to {new_goal_val} per week!")
                 if col4.button("Remove", key=f"remove_{habit}"):
                     st.session_state.data["habits"].pop(habit, None)
                     st.session_state.data["goals"].pop(habit, None)
