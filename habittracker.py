@@ -802,7 +802,7 @@ elif page == "Journal":
             save_journal_entry(today_str, entry)
             st.success(f"Journal entry for {today_str} saved successfully!")
     st.markdown("---")
-    st.header("Get Journal Summary")
+    st.subheader("Get Journal Summary")
     summary_period = st.radio("Select period to summarize", ["Daily", "Weekly", "Monthly"], index=0)
     if st.button("Generate Summary"):
         with st.spinner("Fetching and summarizing your journal entries..."):
