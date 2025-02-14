@@ -441,7 +441,6 @@ else:
         st.plotly_chart(fig_compare, use_container_width=True)
                 
         # --- WEEKLY HEATMAP ---
-        st.markdown("### Weekly Heatmap")
         week_dates = [current_week_start + datetime.timedelta(days=i) for i in range(7)]
         heatmap_data_weekly = []
         text_data_weekly = []
@@ -486,7 +485,6 @@ else:
             xaxis=dict(showgrid=False),
             yaxis=dict(showgrid=False),
             template="plotly_white",
-            title="Weekly Success Heatmap"
         )
         st.plotly_chart(fig_heatmap_weekly, use_container_width=True)
                 
@@ -623,7 +621,6 @@ else:
             xaxis=dict(showgrid=False),
             yaxis=dict(showgrid=False),
             template="plotly_white",
-            title="Monthly Success Heatmap"
         )
         st.plotly_chart(fig_heatmap, use_container_width=True)
                 
@@ -744,6 +741,5 @@ else:
             xaxis=dict(showgrid=False),
             yaxis=dict(showgrid=False),
             template="plotly_white",
-            title="Yearly Success Heatmap"
         )
         st.plotly_chart(fig_heatmap, use_container_width=True)
