@@ -198,6 +198,10 @@ if "tracker_month" not in st.session_state:
     st.session_state.tracker_month = datetime.date.today().replace(day=1)
 if "analytics_view" not in st.session_state:
     st.session_state.analytics_view = "Weekly"
+if "tracker_week" not in st.session_state:
+    # Initialize week tracker to current week (Monday)
+    today = datetime.date.today()
+    st.session_state.tracker_week = today - datetime.timedelta(days=today.weekday())
 
 # ----------------------------------------------------
 # Update streaks for each habit on every load
@@ -354,23 +358,31 @@ else:
     df = pd.DataFrame(records)
     
     if view_option == "Weekly":
-        # Define current week and last week boundaries
-        current_week_start = today - datetime.timedelta(days=today.weekday())
+        # --- WEEK NAVIGATION ---
+        current_week_start = st.session_state.tracker_week
         current_week_end = current_week_start + datetime.timedelta(days=6)
+        col_prev, col_center, col_next = st.columns([1,2,1])
+        with col_prev:
+            if st.button("◀ Previous Week"):
+                st.session_state.tracker_week = st.session_state.tracker_week - datetime.timedelta(days=7)
+                force_rerun()
+        with col_center:
+            st.markdown(f"### Week of {current_week_start.strftime('%Y-%m-%d')}")
+        with col_next:
+            if st.button("Next Week ▶"):
+                st.session_state.tracker_week = st.session_state.tracker_week + datetime.timedelta(days=7)
+                force_rerun()
+        
+        # --- DATA FOR WEEKLY ANALYTICS ---
         last_week_start = current_week_start - datetime.timedelta(days=7)
         last_week_end = current_week_start - datetime.timedelta(days=1)
-
-        # Filter records for current and last week
         mask_current = (df["date"].dt.date >= current_week_start) & (df["date"].dt.date <= current_week_end)
         mask_last = (df["date"].dt.date >= last_week_start) & (df["date"].dt.date <= last_week_end)
         df_current = df[mask_current]
         df_last = df[mask_last]
 
-        # Group data by habit for both weeks
         current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
         last_summary = df_last.groupby("habit").size().reset_index(name="last_success_count")
-
-        # Ensure every habit has an entry (even if zero successes)
         for habit in st.session_state.data["habits"].keys():
             if habit not in current_summary["habit"].values:
                 current_summary = pd.concat([current_summary,
@@ -380,14 +392,11 @@ else:
                 last_summary = pd.concat([last_summary,
                                           pd.DataFrame([{"habit": habit, "last_success_count": 0}])],
                                          ignore_index=True)
-
-        # Merge the two summaries and add the goal value
         summary_compare = pd.merge(current_summary, last_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["last_success_count"] = summary_compare["last_success_count"].astype(int)
         summary_compare["goal"] = summary_compare["habit"].apply(lambda habit: st.session_state.data["goals"].get(habit, 0))
 
-        # Display key metrics in columns
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
         for idx, row in sorted_compare.iterrows():
@@ -406,7 +415,6 @@ else:
             col = cols[idx % 3]
             col.metric(label=habit, value=value_str, delta=delta_str)
 
-        # Create a bar chart comparing current and last week (plus goal)
         melt_compare = summary_compare.melt(
             id_vars="habit", 
             value_vars=["current_success_count", "last_success_count", "goal"],
@@ -531,10 +539,7 @@ else:
             text_data.append(text_row)
         colorscale_monthly = [
             [0.0, "#eaeaea"],
-            [0.333, "#eaeaea"],
-            [0.333, "rgba(0,0,0,0)"],
-            [0.667, "rgba(0,0,0,0)"],
-            [0.667, success_green],
+            [0.5, "rgba(0,0,0,0)"],
             [1.0, success_green]
         ]
         fig_heatmap = go.Figure(data=go.Heatmap(
@@ -547,13 +552,14 @@ else:
             zmin=0,
             zmax=2,
             showscale=False,
-            xgap=0,
-            ygap=0
+            xgap=3,
+            ygap=3
         ))
         fig_heatmap.update_layout(
             xaxis=dict(showgrid=False),
             yaxis=dict(showgrid=False),
-            template="plotly_white"
+            template="plotly_white",
+            title="Monthly Success Heatmap"
         )
         st.plotly_chart(fig_heatmap, use_container_width=True)
         
@@ -627,7 +633,9 @@ else:
             text=text_data,
             hoverinfo="text",
             colorscale=colorscale_yearly,
-            showscale=True
+            showscale=True,
+            xgap=3,
+            ygap=3
         ))
         fig_year_heatmap.update_layout(
             title=f"Monthly Success Heatmap for {selected_year}",
