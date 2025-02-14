@@ -82,6 +82,9 @@ OUTCOME_COLORS = {
     "failed": "transparent"
 }
 
+# Define a single success green tone for all heatmaps
+success_green = "#4BB543"
+
 def load_user_data(user_id):
     ref = db.reference(f"users/{user_id}")
     data = ref.get()
@@ -351,25 +354,40 @@ else:
     df = pd.DataFrame(records)
     
     if view_option == "Weekly":
+        # Define current week and last week boundaries
         current_week_start = today - datetime.timedelta(days=today.weekday())
         current_week_end = current_week_start + datetime.timedelta(days=6)
         last_week_start = current_week_start - datetime.timedelta(days=7)
         last_week_end = current_week_start - datetime.timedelta(days=1)
+
+        # Filter records for current and last week
         mask_current = (df["date"].dt.date >= current_week_start) & (df["date"].dt.date <= current_week_end)
         mask_last = (df["date"].dt.date >= last_week_start) & (df["date"].dt.date <= last_week_end)
         df_current = df[mask_current]
         df_last = df[mask_last]
+
+        # Group data by habit for both weeks
         current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
         last_summary = df_last.groupby("habit").size().reset_index(name="last_success_count")
+
+        # Ensure every habit has an entry (even if zero successes)
         for habit in st.session_state.data["habits"].keys():
             if habit not in current_summary["habit"].values:
-                current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
+                current_summary = pd.concat([current_summary,
+                                             pd.DataFrame([{"habit": habit, "current_success_count": 0}])],
+                                            ignore_index=True)
             if habit not in last_summary["habit"].values:
-                last_summary = pd.concat([last_summary, pd.DataFrame([{"habit": habit, "last_success_count": 0}])], ignore_index=True)
+                last_summary = pd.concat([last_summary,
+                                          pd.DataFrame([{"habit": habit, "last_success_count": 0}])],
+                                         ignore_index=True)
+
+        # Merge the two summaries and add the goal value
         summary_compare = pd.merge(current_summary, last_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["last_success_count"] = summary_compare["last_success_count"].astype(int)
         summary_compare["goal"] = summary_compare["habit"].apply(lambda habit: st.session_state.data["goals"].get(habit, 0))
+
+        # Display key metrics in columns
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
         for idx, row in sorted_compare.iterrows():
@@ -387,6 +405,8 @@ else:
             value_str = f"{row['current_success_count']} / {goal_val} ({current_pct:.0f}%)"
             col = cols[idx % 3]
             col.metric(label=habit, value=value_str, delta=delta_str)
+
+        # Create a bar chart comparing current and last week (plus goal)
         melt_compare = summary_compare.melt(
             id_vars="habit", 
             value_vars=["current_success_count", "last_success_count", "goal"],
@@ -412,6 +432,56 @@ else:
             template="plotly_white"
         )
         st.plotly_chart(fig_compare, use_container_width=True)
+                
+        # --- WEEKLY HEATMAP ---
+        st.markdown("### Weekly Heatmap")
+        week_dates = [current_week_start + datetime.timedelta(days=i) for i in range(7)]
+        heatmap_data_weekly = []
+        text_data_weekly = []
+        for habit in st.session_state.data["habits"].keys():
+            row = []
+            text_row = []
+            for day in week_dates:
+                day_str = day.strftime("%Y-%m-%d")
+                outcome = st.session_state.data["habits"][habit].get(day_str)
+                if outcome == "succeeded":
+                    val = 2
+                    text = f"{day_str}: Succeeded"
+                elif outcome == "failed":
+                    val = 1
+                    text = f"{day_str}: Failed"
+                else:
+                    val = 0
+                    text = f"{day_str}: No Data"
+                row.append(val)
+                text_row.append(text)
+            heatmap_data_weekly.append(row)
+            text_data_weekly.append(text_row)
+        colorscale_weekly = [
+            [0.0, "#eaeaea"],
+            [0.5, "rgba(0,0,0,0)"],
+            [1.0, success_green]
+        ]
+        fig_heatmap_weekly = go.Figure(data=go.Heatmap(
+            z=heatmap_data_weekly,
+            x=[day.strftime("%a") for day in week_dates],
+            y=list(st.session_state.data["habits"].keys()),
+            text=text_data_weekly,
+            hoverinfo="text",
+            colorscale=colorscale_weekly,
+            zmin=0,
+            zmax=2,
+            showscale=False,
+            xgap=3,
+            ygap=3
+        ))
+        fig_heatmap_weekly.update_layout(
+            xaxis=dict(showgrid=False),
+            yaxis=dict(showgrid=False),
+            template="plotly_white",
+            title="Weekly Success Heatmap"
+        )
+        st.plotly_chart(fig_heatmap_weekly, use_container_width=True)
                 
     elif view_option == "Monthly":
         df["month"] = df["date"].dt.to_period("M").astype(str)
@@ -459,13 +529,13 @@ else:
                 text_row.append(text)
             heatmap_data.append(row)
             text_data.append(text_row)
-        colorscale = [
+        colorscale_monthly = [
             [0.0, "#eaeaea"],
             [0.333, "#eaeaea"],
             [0.333, "rgba(0,0,0,0)"],
             [0.667, "rgba(0,0,0,0)"],
-            [0.667, "#4BB543"],
-            [1.0, "#4BB543"]
+            [0.667, success_green],
+            [1.0, success_green]
         ]
         fig_heatmap = go.Figure(data=go.Heatmap(
             z=heatmap_data,
@@ -473,7 +543,7 @@ else:
             y=list(st.session_state.data["habits"].keys()),
             text=text_data,
             hoverinfo="text",
-            colorscale=colorscale,
+            colorscale=colorscale_monthly,
             zmin=0,
             zmax=2,
             showscale=False,
@@ -544,14 +614,11 @@ else:
                 row_text.append(f"{habit} in {calendar.month_abbr[m]} {selected_year}: {int(count)} successes")
             text_data.append(row_text)
 
-        if heatmap_matrix.max() == 0:
-            colorscale_used = [[0, "#eaeaea"], [1, "#eaeaea"]]
-        else:
-            colorscale_used = [
-                [0.0, "#eaeaea"],
-                [0.5, "#A8D08D"],
-                [1.0, "#4BB543"]
-            ]
+        colorscale_yearly = [
+            [0.0, "#eaeaea"],
+            [0.5, success_green],
+            [1.0, success_green]
+        ]
         
         fig_year_heatmap = go.Figure(data=go.Heatmap(
             z=heatmap_matrix,
@@ -559,7 +626,7 @@ else:
             y=yearly_pivot.index,
             text=text_data,
             hoverinfo="text",
-            colorscale=colorscale_used,
+            colorscale=colorscale_yearly,
             showscale=True
         ))
         fig_year_heatmap.update_layout(
