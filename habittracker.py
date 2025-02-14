@@ -205,38 +205,32 @@ for habit in st.session_state.data["habits"]:
     update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
 
 # ----------------------------------------------------
-# PAGE CONTENT
+# PAGE HEADER: Robot Logo & Animated Speech Bubble
 # ----------------------------------------------------
-# Use Base64 to embed the header image inline
+# Embed the robot logo image as Base64
 base64_image = get_base64_image("assets/app_icon.png")
 st.markdown(
     f"""
-    <h1 style="display: flex; align-items: center;">
-        Pulse - Habit Tracker 
-        <img src="data:image/png;base64,{base64_image}" alt="Custom Icon" style="height: 1em; margin-left: 0.5em;">
-    </h1>
+    <div style="display: flex; align-items: center; margin-bottom: 20px;">
+        <img src="data:image/png;base64,{base64_image}" alt="Robot Logo" style="height: 100px; margin-right: 20px;">
+        <div style="position: relative; background: #f0f0f0; border-radius: 10px; padding: 10px 20px; max-width: 300px;">
+            <p id="typed" style="font-size: 24px; margin: 0;"></p>
+            <div style="position: absolute; bottom: -10px; left: 20px; width: 0; height: 0; border-top: 10px solid #f0f0f0; border-left: 10px solid transparent; border-right: 10px solid transparent;"></div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
+    <script>
+      var typed = new Typed('#typed', {{
+        strings: ["Remember why you started", "Remember the euphoric highs of success", "Follow yourself"],
+        typeSpeed: 50,
+        backSpeed: 25,
+        backDelay: 2000,
+        loop: true
+      }});
+    </script>
     """,
     unsafe_allow_html=True
 )
-
-# Add a typewriter-style motivational message.
-import streamlit.components.v1 as components
-typed_html = """
-<div style="text-align:center; font-size:24px; font-weight:bold; margin-bottom: 0px;">
-  <span id="typed" style="color:#D3D3D3;"></span>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
-<script>
-  var typed = new Typed('#typed', {
-    strings: ["Remember why you started", "Remember the euphoric highs of success", "Follow yourself"],
-    typeSpeed: 50,
-    backSpeed: 25,
-    backDelay: 2000,
-    loop: true
-  });
-</script>
-"""
-components.html(typed_html, height=60)
 
 ###########################################
 # Manage Habits Section (Add, Edit Goal & Remove)
