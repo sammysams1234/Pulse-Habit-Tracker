@@ -53,7 +53,6 @@ if openai.api_key is None:
 data_encryption_key = os.environ.get("DATA_ENCRYPTION_KEY")
 if not data_encryption_key:
     st.error("DATA_ENCRYPTION_KEY is not set in the environment. All user data will not be encrypted!")
-    # You might want to stop the app here.
 try:
     fernet = Fernet(data_encryption_key.encode())
 except Exception as e:
@@ -101,12 +100,10 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
         if "credentials" in data:
             return False  # User already exists.
         else:
-            # Save credentials: store display_name in plain text and password hashed
             data["credentials"] = {
                 "display_name": display_name,
                 "password": hashed_pw
             }
-            # Combine all other user data into one encrypted blob.
             initial_data = {"habits": {}, "goals": {}, "streaks": {}, "journal": {}}
             data["data"] = encrypt_json(initial_data)
             ref.set(data)
@@ -120,7 +117,6 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
         else:
             stored_pw = creds.get("password")
             if stored_pw and bcrypt.checkpw(password.encode(), stored_pw.encode()):
-                # Retrieve display name from credentials (no decryption needed)
                 display_name = creds.get("display_name")
                 return True, display_name
             else:
@@ -163,8 +159,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                     st.session_state.logged_in = True
                     st.session_state.username = username
                     st.session_state.name = display_name
-                    # Set default page to Pulse so it mimics a sidebar click.
-                    st.session_state.page = "Pulse"
+                    st.session_state.page = "Pulse"  # default page
                     st.success(f"Welcome, {display_name}!")
                 else:
                     st.error("Invalid username or password.")
@@ -188,7 +183,7 @@ def save_user_data(user_id, data):
     ref.set(encrypt_json(data))
 
 # =====================================================
-# OTHER HELPER FUNCTIONS (unchanged)
+# OTHER HELPER FUNCTIONS
 # =====================================================
 def shift_month(date_obj, delta):
     year = date_obj.year
@@ -206,17 +201,10 @@ def compute_current_streak(habit_data, today):
     d = today
     while True:
         d_str = d.strftime("%Y-%m-%d")
-        if d == today:
-            if d_str in habit_data:
-                if habit_data[d_str] == "succeeded":
-                    streak += 1
-                else:
-                    break
+        if d_str in habit_data and habit_data[d_str] == "succeeded":
+            streak += 1
         else:
-            if d_str not in habit_data or habit_data[d_str] != "succeeded":
-                break
-            else:
-                streak += 1
+            break
         d -= datetime.timedelta(days=1)
     return streak
 
@@ -304,7 +292,6 @@ def get_summary_for_entries(entries_text, period):
         "Provide a brief motivational summary that helps me stay positive and focused.\n\n"
         f"{entries_text}"
     )
-    # Check if the new ChatCompletion interface is available.
     if not hasattr(openai, "ChatCompletion"):
         return ("OpenAI ChatCompletion is not available in your current openai library version. "
                 "Please run openai migrate to update your codebase or pin your openai version to <1.0.0.")
@@ -329,8 +316,8 @@ def get_summary_for_entries(entries_text, period):
 if "page" not in st.session_state:
     st.session_state.page = "Pulse"
 
-# Changed navigation options to "Pulse" and "Daily Journal"
-page_options = ["Pulse", "Daily Journal"]
+# Update navigation options to three tabs.
+page_options = ["Pulse", "Analytics", "Journal"]
 page = st.sidebar.radio("Navigation", page_options, index=page_options.index(st.session_state.page))
 st.session_state.page = page
 st.sidebar.write(f"Logged in as **{st.session_state.name}**")
@@ -339,11 +326,12 @@ st.sidebar.write(f"Logged in as **{st.session_state.name}**")
 # PAGE HEADER: LOGO & TITLE
 # -------------------------------
 base64_image = get_base64_image("assets/app_icon.png")
-# Set header text based on current page and use a purple color (#800080)
 if page == "Pulse":
     header_text = "Pulse"
-elif page == "Daily Journal":
-    header_text = "Daily Journal"
+elif page == "Analytics":
+    header_text = "Analytics"
+elif page == "Journal":
+    header_text = "Journal"
 else:
     header_text = ""
 
@@ -375,7 +363,7 @@ for habit in st.session_state.data["habits"]:
     update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
 
 # =====================================================
-# PAGE: PULSE (Main Habit Tracker & Analytics)
+# PAGE: PULSE (Main Habit Tracker)
 # =====================================================
 if page == "Pulse":
     st.markdown("### Weekly Habit Tracker")
@@ -462,18 +450,17 @@ if page == "Pulse":
         row_cols[9].markdown(f"**{longest_streak}**")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # -------------------------------
-    # Analytics Section
-    # -------------------------------
-    st.markdown("---")
-    with st.container():
-        st.markdown("### Analytics")
-        view_option = st.selectbox(
-            "Filter analytics view:",
-            ["Weekly", "Monthly", "Yearly"],
-            index=["Weekly", "Monthly", "Yearly"].index(st.session_state.analytics_view)
-        )
-        st.session_state.analytics_view = view_option
+# =====================================================
+# PAGE: ANALYTICS (Habit Tracking Analytics)
+# =====================================================
+elif page == "Analytics":
+    st.markdown("### Analytics")
+    view_option = st.selectbox(
+        "Filter analytics view:",
+        ["Weekly", "Monthly", "Yearly"],
+        index=["Weekly", "Monthly", "Yearly"].index(st.session_state.analytics_view)
+    )
+    st.session_state.analytics_view = view_option
 
     habit_colors = {habit: get_habit_color(habit) for habit in st.session_state.data["habits"].keys()}
     records = []
@@ -793,9 +780,9 @@ if page == "Pulse":
             st.plotly_chart(fig_heatmap, use_container_width=True)
 
 # =====================================================
-# PAGE: DAILY JOURNAL
+# PAGE: JOURNAL (Daily Journal)
 # =====================================================
-elif page == "Daily Journal":
+elif page == "Journal":
     st.title("Daily Journal 📝")
     today = datetime.date.today()
     today_str = today.strftime("%Y-%m-%d")
