@@ -8,6 +8,15 @@ import plotly.graph_objects as go
 from wordcloud import WordCloud
 import json
 import hashlib
+import base64
+
+# ----------------------------------
+# Helper function to get Base64 image
+# ----------------------------------
+def get_base64_image(image_path):
+    with open(image_path, "rb") as img_file:
+        encoded = base64.b64encode(img_file.read()).decode()
+    return encoded
 
 # -------------------------------
 # Firebase Admin Imports & Setup
@@ -198,11 +207,13 @@ for habit in st.session_state.data["habits"]:
 # ----------------------------------------------------
 # PAGE CONTENT
 # ----------------------------------------------------
+# Use Base64 to embed the header image inline
+base64_image = get_base64_image("assets/app_icon.png")
 st.markdown(
-    """
+    f"""
     <h1 style="display: flex; align-items: center;">
         Pulse - Habit Tracker 
-        <img src="assets/app_icon.png" alt="Custom Icon" style="height: 1em; margin-left: 0.5em;">
+        <img src="data:image/png;base64,{base64_image}" alt="Custom Icon" style="height: 1em; margin-left: 0.5em;">
     </h1>
     """,
     unsafe_allow_html=True
