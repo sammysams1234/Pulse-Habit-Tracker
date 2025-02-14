@@ -248,7 +248,8 @@ with st.expander("Manage Habits", expanded=False):
             st.error("This habit already exists!")
         else:
             st.session_state.data["habits"][new_habit] = {}
-            st.session_state.data["goals"][new_habit] = int(new_goal)
+            # Convert goal to integer in case it's not already
+            st.session_state.data["goals"][new_habit] = int(float(new_goal))
             # Initialize streaks for new habit
             update_streaks_for_habit(user_id, new_habit, st.session_state.data["habits"][new_habit], today)
             save_user_data(user_id, st.session_state.data)
@@ -258,12 +259,12 @@ with st.expander("Manage Habits", expanded=False):
     st.subheader("Manage Habits")
     if st.session_state.data["habits"]:
         for habit in list(st.session_state.data["habits"].keys()):
-            current_goal = st.session_state.data["goals"].get(habit, 1)
+            current_goal = int(float(st.session_state.data["goals"].get(habit, 0)))
             col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
             col1.markdown(f"**{habit}**")
-            new_goal_val = col2.number_input("Goal", min_value=1, value=current_goal, key=f"edit_goal_{habit}")
+            new_goal_val = st.number_input("Goal", min_value=1, value=current_goal, key=f"edit_goal_{habit}")
             if col3.button("Update", key=f"update_goal_{habit}"):
-                st.session_state.data["goals"][habit] = new_goal_val
+                st.session_state.data["goals"][habit] = int(float(new_goal_val))
                 save_user_data(user_id, st.session_state.data)
                 st.success(f"Updated goal for '{habit}' to {new_goal_val}!")
                 force_rerun()
@@ -393,8 +394,8 @@ else:
         summary_compare = pd.merge(current_summary, last_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["last_success_count"] = summary_compare["last_success_count"].astype(int)
-        # For weekly view, the stored goal is already weekly.
-        summary_compare["goal"] = summary_compare["habit"].apply(lambda habit: st.session_state.data["goals"].get(habit, 0))
+        # For weekly view, convert the stored goal to integer
+        summary_compare["goal"] = summary_compare["habit"].apply(lambda habit: int(float(st.session_state.data["goals"].get(habit, 0))))
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
         for idx, row in sorted_compare.iterrows():
@@ -409,7 +410,7 @@ else:
                 current_pct = row["current_success_count"] / goal_val * 100
             else:
                 current_pct = 0
-            value_str = f"{row['current_success_count']} / {goal_val} ({current_pct:.0f}%)"
+            value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
             col = cols[idx % 3]
             col.metric(label=habit, value=value_str, delta=delta_str)
 
@@ -530,9 +531,9 @@ else:
         summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
-        # Calculate monthly goal based on a weekly goal (for 7 days):
+        # Calculate monthly goal based on a weekly goal (for 7 days) and round down.
         summary_compare["goal"] = summary_compare["habit"].apply(
-            lambda habit: st.session_state.data["goals"].get(habit, 0) / 7 * num_days
+            lambda habit: int(float(st.session_state.data["goals"].get(habit, 0)) / 7 * num_days)
         )
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
@@ -548,7 +549,7 @@ else:
                 current_pct = row["current_success_count"] / goal_val * 100
             else:
                 current_pct = 0
-            value_str = f"{row['current_success_count']} / {goal_val} ({current_pct:.0f}%)"
+            value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
             col = cols[idx % 3]
             col.metric(label=habit, value=value_str, delta=delta_str)
         melt_compare = summary_compare.melt(
@@ -658,10 +659,10 @@ else:
         summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
-        # Calculate yearly goal based on a weekly goal (for 7 days)
+        # Calculate yearly goal based on a weekly goal (for 7 days) and round down.
         days_in_year = 366 if calendar.isleap(selected_year) else 365
         summary_compare["goal"] = summary_compare["habit"].apply(
-            lambda habit: st.session_state.data["goals"].get(habit, 0) / 7 * days_in_year
+            lambda habit: int(float(st.session_state.data["goals"].get(habit, 0)) / 7 * days_in_year)
         )
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
@@ -677,7 +678,7 @@ else:
                 current_pct = row["current_success_count"] / goal_val * 100
             else:
                 current_pct = 0
-            value_str = f"{row['current_success_count']} / {goal_val} ({current_pct:.0f}%)"
+            value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
             col = cols[idx % 3]
             col.metric(label=habit, value=value_str, delta=delta_str)
         melt_compare = summary_compare.melt(
