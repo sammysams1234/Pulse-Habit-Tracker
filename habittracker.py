@@ -303,10 +303,12 @@ def build_entries_text(entries):
 def get_summary_for_entries(entries_text, period):
     if not entries_text.strip():
         return "No journal entries to summarize."
+    
     prompt = (
         f"Please summarize the following journal entries for a {period.lower()} period. "
         "Focus on the emotional tone, the main feelings expressed, and possible underlying causes. "
-        "Provide a brief motivational summary that helps me stay positive and focused.\n\n"
+        "Provide a brief motivational conclusion. **Do not prepend any heading like 'Summary:'. "
+        "Only return the summary text.**\n\n"
         f"{entries_text}"
     )
     if not hasattr(openai, "ChatCompletion"):
