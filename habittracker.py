@@ -393,7 +393,7 @@ else:
         summary_compare = pd.merge(current_summary, last_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["last_success_count"] = summary_compare["last_success_count"].astype(int)
-        # For weekly view, assume stored goal is already weekly; if not, you might use: goal = daily_goal * 7
+        # For weekly view, the stored goal is already weekly.
         summary_compare["goal"] = summary_compare["habit"].apply(lambda habit: st.session_state.data["goals"].get(habit, 0))
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
@@ -530,8 +530,10 @@ else:
         summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
-        # Calculate monthly goal = daily goal * num_days in current month
-        summary_compare["goal"] = summary_compare["habit"].apply(lambda habit: st.session_state.data["goals"].get(habit, 0) * num_days)
+        # Calculate monthly goal based on a weekly goal (for 7 days):
+        summary_compare["goal"] = summary_compare["habit"].apply(
+            lambda habit: st.session_state.data["goals"].get(habit, 0) / 7 * num_days
+        )
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
         for idx, row in sorted_compare.iterrows():
@@ -656,9 +658,11 @@ else:
         summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
-        # Yearly goal = daily goal * days in year (leap year or not)
+        # Calculate yearly goal based on a weekly goal (for 7 days)
         days_in_year = 366 if calendar.isleap(selected_year) else 365
-        summary_compare["goal"] = summary_compare["habit"].apply(lambda habit: st.session_state.data["goals"].get(habit, 0) * days_in_year)
+        summary_compare["goal"] = summary_compare["habit"].apply(
+            lambda habit: st.session_state.data["goals"].get(habit, 0) / 7 * days_in_year
+        )
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
         for idx, row in sorted_compare.iterrows():
