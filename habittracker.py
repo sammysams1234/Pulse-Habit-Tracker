@@ -91,7 +91,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                 return False, None
 
     # --- UI: Choose to Login or Register ---
-    action = st.radio("Select Action", ["Login", "Register"])
+    action = st.radio("", ["Login", "Register"])
 
     if action == "Register":
         st.subheader("Create an Account")
