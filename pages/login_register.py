@@ -5,9 +5,6 @@ import os
 import firebase_admin
 from firebase_admin import credentials, db
 
-# --- Page config: Hide sidebar on login/register ---
-st.set_page_config(page_title="Login/Register", initial_sidebar_state="collapsed")
-
 # --- Initialize Firebase (if not already initialized) ---
 if not firebase_admin._apps:
     firebase_creds_json = os.environ.get("FIREBASE_CREDENTIALS")
@@ -25,17 +22,12 @@ st.title("Welcome! Please Login or Create an Account")
 
 # --- Helper Functions for Firebase User Management ---
 def register_user(username, name, hashed_pw):
-    """
-    Register a new user by storing their credentials in Firebase under 'users/{username}/credentials'.
-    Returns True if registration succeeded; False if the username already exists.
-    """
     ref = db.reference("users/" + username)
     data = ref.get() or {}
     if "credentials" in data:
         return False  # User already exists.
     else:
         data["credentials"] = {"name": name, "password": hashed_pw}
-        # Initialize empty goals, habits, and streaks for this user.
         data["goals"] = {}
         data["habits"] = {}
         data["streaks"] = {}
@@ -43,9 +35,6 @@ def register_user(username, name, hashed_pw):
         return True
 
 def login_user(username, password):
-    """
-    Check credentials stored in Firebase and return (True, name) if valid.
-    """
     ref = db.reference("users/" + username + "/credentials")
     creds = ref.get()
     if creds is None:
@@ -57,12 +46,11 @@ def login_user(username, password):
         else:
             return False, None
 
-# --- UI: Let the user choose to Login or Register ---
+# --- UI: Choose to Login or Register ---
 action = st.radio("Select Action", ["Login", "Register"])
 
 if action == "Register":
     st.subheader("Create an Account")
-    # For this example, we expect the user to register as sammysams1234
     username = st.text_input("Username", key="reg_username", value="sammysams1234")
     name = st.text_input("Name", key="reg_name", value="Samuel")
     password = st.text_input("Password", type="password", key="reg_password")
@@ -83,7 +71,6 @@ if action == "Register":
 
 if action == "Login":
     st.subheader("Log In")
-    # Default to the sammysams1234 account
     username = st.text_input("Username", key="login_username", value="sammysams1234")
     password = st.text_input("Password", type="password", key="login_password")
     
@@ -100,7 +87,7 @@ if action == "Login":
             else:
                 st.error("Invalid username or password.")
 
-# --- Automatic redirect if logged in using JavaScript ---
-if "logged_in" in st.session_state and st.session_state.logged_in:
-    st.write("<script>window.location.href='/habittracker';</script>", unsafe_allow_html=True)
-    st.stop()
+# Remove the forced redirect below so that logged in users can navigate freely.
+# if "logged_in" in st.session_state and st.session_state.logged_in:
+#     st.write("<script>window.location.href='/habit_tracker';</script>", unsafe_allow_html=True)
+#     st.stop()
