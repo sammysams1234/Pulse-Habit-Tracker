@@ -1,5 +1,5 @@
 import streamlit as st
-import streamlit_authenticator as stauth
+import bcrypt
 import datetime
 import os
 import calendar
@@ -9,40 +9,48 @@ import plotly.graph_objects as go
 import json
 import hashlib
 import base64
+import firebase_admin
+from firebase_admin import credentials, db
+import streamlit.components.v1 as components
 
 # ------------------------------------------------
-# USER AUTHENTICATION (using streamlit-authenticator)
+# SIMPLE LOGIN SYSTEM USING BCRYPT
 # ------------------------------------------------
-# Preconfigured user details (for demo purposes)
-names = ["Alice Example", "Bob Example"]
-usernames = ["alice", "bob"]
-passwords = ["password123", "mypassword"]  # Demo plain-text passwords; do not use plain text in production!
-hashed_passwords = stauth.Hasher(passwords).generate()
-
-credentials = {
-    "usernames": {
-        usernames[i]: {"name": names[i], "password": hashed_passwords[i]}
-        for i in range(len(usernames))
+# Precomputed bcrypt hashes for demo users.
+# (These hashes were generated for "password123" and "mypassword" respectively.)
+# In production, store and manage your credentials securely!
+CREDENTIALS = {
+    "alice": {
+        "name": "Alice Example",
+        "password": "$2b$12$KIXJwH.U67t9LE6F1GJkCu0H5kCZY61LGZ/fW.uH5.vwkK6.vIh1C"  # hash for "password123"
+    },
+    "bob": {
+        "name": "Bob Example",
+        "password": "$2b$12$R9z7t/RoCHv1.s9RyvE6gO.aCzkJrFa6DVEfsVKWe07s3/46jeNd6"  # hash for "mypassword"
     }
 }
 
-authenticator = stauth.Authenticate(
-    credentials,
-    "some_cookie_key",        # Replace with your own secret key
-    cookie_expiry_days=30
-)
+def check_password(plain_password, hashed_password):
+    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
 
-name, authentication_status, username = authenticator.login("Login", "main")
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
 
-if authentication_status:
-    st.success(f"Welcome, {name}!")
-    user_id = username  # Use the username as the unique user ID
-elif authentication_status is False:
-    st.error("Username/password is incorrect")
-    st.stop()  # Stop app if login fails
-elif authentication_status is None:
-    st.warning("Please enter your username and password")
+if not st.session_state.logged_in:
+    st.title("Login")
+    username_input = st.text_input("Username")
+    password_input = st.text_input("Password", type="password")
+    if st.button("Login"):
+        if username_input in CREDENTIALS and check_password(password_input, CREDENTIALS[username_input]["password"]):
+            st.session_state.logged_in = True
+            st.session_state.username = username_input
+            st.success(f"Welcome, {CREDENTIALS[username_input]['name']}!")
+        else:
+            st.error("Invalid username or password")
     st.stop()
+
+# Use the logged-in username as the unique user_id
+user_id = st.session_state.username
 
 # ------------------------------------------------
 # HELPER FUNCTION TO GET BASE64 IMAGE
@@ -55,9 +63,6 @@ def get_base64_image(image_path):
 # ------------------------------------------------
 # FIREBASE ADMIN IMPORTS & INITIALIZATION
 # ------------------------------------------------
-import firebase_admin
-from firebase_admin import credentials, db
-
 if not firebase_admin._apps:
     firebase_creds_json = os.environ.get("FIREBASE_CREDENTIALS")
     if firebase_creds_json:
@@ -239,7 +244,6 @@ for habit in st.session_state.data["habits"]:
 # PAGE HEADER: Logo & Animated Messages
 # ------------------------------------------------
 base64_image = get_base64_image("assets/app_icon.png")
-import streamlit.components.v1 as components
 header_html = f"""
 <div style="display: flex; align-items: center; margin-bottom: 20px;">
     <img src="data:image/png;base64,{base64_image}" alt="App Icon" style="height: 100px; margin-right: 20px;">
