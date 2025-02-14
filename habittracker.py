@@ -475,8 +475,7 @@ if page == "Habit Tracker 📆":
     if st.button("Add Task"):
         new_task = new_task.strip()
         if new_task:
-            # Use a timestamp string as a unique ID for the task
-            task_id = str(datetime.datetime.now().timestamp())
+            task_id = str(int(datetime.datetime.now().timestamp()))
             st.session_state.data["todo"][task_id] = {"task": new_task, "completed": False}
             db.reference(f"users/{user_id}/todo").child(task_id).set({"task": new_task, "completed": False})
             st.success("Task added!")
