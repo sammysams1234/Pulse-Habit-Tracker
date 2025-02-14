@@ -327,11 +327,11 @@ st.sidebar.write(f"Logged in as **{st.session_state.name}**")
 # -------------------------------
 base64_image = get_base64_image("assets/app_icon.png")
 if page == "Pulse":
-    header_text = "Pulse"
+    header_text = "Pulse Weekly Habit Tracker"
 elif page == "Analytics":
-    header_text = "Analytics"
+    header_text = "Pulse Analytics"
 elif page == "Journal":
-    header_text = "Journal"
+    header_text = "Pulse Journal"
 else:
     header_text = ""
 
@@ -365,9 +365,7 @@ for habit in st.session_state.data["habits"]:
 # =====================================================
 # PAGE: PULSE (Main Habit Tracker)
 # =====================================================
-if page == "Pulse":
-    st.markdown("### Weekly Habit Tracker")
-    
+if page == "Pulse":    
     # -------------------------------
     # Manage Habits Section
     # -------------------------------
@@ -454,7 +452,6 @@ if page == "Pulse":
 # PAGE: ANALYTICS (Habit Tracking Analytics)
 # =====================================================
 elif page == "Analytics":
-    st.markdown("### Analytics")
     view_option = st.selectbox(
         "Filter analytics view:",
         ["Weekly", "Monthly", "Yearly"],
@@ -783,7 +780,6 @@ elif page == "Analytics":
 # PAGE: JOURNAL (Daily Journal)
 # =====================================================
 elif page == "Journal":
-    st.title("Daily Journal 📝")
     today = datetime.date.today()
     today_str = today.strftime("%Y-%m-%d")
     st.subheader(f"Journal Entry for {today_str}")
