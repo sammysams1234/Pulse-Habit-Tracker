@@ -461,7 +461,7 @@ if page == "Habit Tracker 📆":
     st.markdown("---")
     # Container for the analytics filter dropdown:
     with st.container():
-        st.markdown("### Analytics Filter")
+        st.markdown("### Analytics")
         view_option = st.selectbox(
             "Filter analytics view:",
             ["Weekly", "Monthly", "Yearly"],
