@@ -1,32 +1,33 @@
 import streamlit as st
 import bcrypt
 import json
-import os
 import firebase_admin
 from firebase_admin import credentials, db
 
-# --- Page config: Hide sidebar on login/register ---
+# ---------------------------
+# Page Config: Hide Sidebar
+# ---------------------------
 st.set_page_config(page_title="Login/Register", initial_sidebar_state="collapsed")
 
-# --- Initialize Firebase (if not already initialized) ---
+# ---------------------------
+# Initialize Firebase using st.secrets
+# ---------------------------
+firebase_creds = json.loads(st.secrets["FIREBASE"]["FIREBASE_CREDENTIALS"])
+database_url = st.secrets["FIREBASE"]["FIREBASE_DATABASE_URL"]
+
 if not firebase_admin._apps:
-    firebase_creds_json = os.environ.get("FIREBASE_CREDENTIALS")
-    database_url = os.environ.get("FIREBASE_DATABASE_URL")
-    if firebase_creds_json and database_url:
-        try:
-            cred = credentials.Certificate(json.loads(firebase_creds_json))
-            firebase_admin.initialize_app(cred, {"databaseURL": database_url})
-        except Exception as e:
-            st.error("Firebase initialization error: " + str(e))
-    else:
-        st.error("FIREBASE_CREDENTIALS and FIREBASE_DATABASE_URL must be set in the environment.")
+    cred = credentials.Certificate(firebase_creds)
+    firebase_admin.initialize_app(cred, {"databaseURL": database_url})
 
 st.title("Welcome! Please Login or Create an Account")
 
-# --- Helper Functions for Firebase User Management ---
+# ---------------------------
+# Helper Functions for Firebase User Management
+# ---------------------------
 def register_user(username, name, hashed_pw):
     """
     Register a new user by storing their credentials in Firebase under 'users/{username}/credentials'.
+    Also initialize empty nodes for goals, habits, and streaks.
     Returns True if registration succeeded; False if the username already exists.
     """
     ref = db.reference("users/" + username)
@@ -35,7 +36,6 @@ def register_user(username, name, hashed_pw):
         return False  # User already exists.
     else:
         data["credentials"] = {"name": name, "password": hashed_pw}
-        # Initialize empty goals, habits, and streaks for this user.
         data["goals"] = {}
         data["habits"] = {}
         data["streaks"] = {}
@@ -57,12 +57,14 @@ def login_user(username, password):
         else:
             return False, None
 
-# --- UI: Let the user choose to Login or Register ---
+# ---------------------------
+# Login/Register UI
+# ---------------------------
 action = st.radio("Select Action", ["Login", "Register"])
 
 if action == "Register":
     st.subheader("Create an Account")
-    # For this example, we expect the user to register as sammysams1234
+    # Default to the desired username "sammysams1234"
     username = st.text_input("Username", key="reg_username", value="sammysams1234")
     name = st.text_input("Name", key="reg_name", value="Samuel")
     password = st.text_input("Password", type="password", key="reg_password")
@@ -83,7 +85,6 @@ if action == "Register":
 
 if action == "Login":
     st.subheader("Log In")
-    # Default to the sammysams1234 account
     username = st.text_input("Username", key="login_username", value="sammysams1234")
     password = st.text_input("Password", type="password", key="login_password")
     
@@ -100,7 +101,9 @@ if action == "Login":
             else:
                 st.error("Invalid username or password.")
 
-# --- Automatic redirect if logged in using JavaScript ---
+# ---------------------------
+# Automatic Redirect if Logged In (via JavaScript)
+# ---------------------------
 if "logged_in" in st.session_state and st.session_state.logged_in:
     st.write("<script>window.location.href='/habittracker';</script>", unsafe_allow_html=True)
     st.stop()
