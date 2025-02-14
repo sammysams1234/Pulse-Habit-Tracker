@@ -88,17 +88,37 @@ def shift_month(date_obj, delta):
 
 # --- Modified compute_current_streak Function ---
 def compute_current_streak(habit_data, today):
+    """
+    Duolingo-like logic:
+      - If today is unmarked, treat it as success.
+      - If any past day is unmarked (or failed), break the streak.
+    """
     streak = 0
-    today_str = today.strftime("%Y-%m-%d")
-    # If today's habit is unmarked, treat it as a success (Duolingo style)
-    if habit_data.get(today_str) is None:
-        streak += 1
-    else:
-        if habit_data.get(today_str) == "succeeded":
-            streak += 1
+    d = today
+
+    while True:
+        d_str = d.strftime("%Y-%m-%d")
+
+        # If we're looking at "today":
+        if d == today:
+            # If today's explicitly failed, break.
+            # Otherwise (either succeeded or not marked), treat as success.
+            if habit_data.get(d_str) == "failed":
+                break
+            else:
+                streak += 1
         else:
-            # If today's entry exists and it's not a success, streak stops
-            return streak
+            # For past days, you must have an explicit "succeeded" to continue the streak
+            if habit_data.get(d_str) == "succeeded":
+                streak += 1
+            else:
+                # If it's "failed" or None/unmarked, break the streak
+                break
+
+        # Move to the previous day
+        d -= datetime.timedelta(days=1)
+
+    return streak
 
     # Now count backwards for previous days
     d = today - datetime.timedelta(days=1)
