@@ -249,7 +249,7 @@ with st.expander("Manage Habits", expanded=False):
             st.success(f"Habit '{new_habit}' added successfully!")
             force_rerun()
 
-    st.subheader("Manage Existing Habits")
+    st.subheader("Manage Habits")
     if st.session_state.data["habits"]:
         for habit in list(st.session_state.data["habits"].keys()):
             current_goal = st.session_state.data["goals"].get(habit, 1)
