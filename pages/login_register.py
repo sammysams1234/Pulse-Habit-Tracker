@@ -5,7 +5,7 @@ import os
 import firebase_admin
 from firebase_admin import credentials, db
 
-# --- Page config: Hide sidebar on login ---
+# --- Page config: Hide sidebar on login/register ---
 st.set_page_config(page_title="Login/Register", initial_sidebar_state="collapsed")
 
 # --- Initialize Firebase (if not already initialized) ---
@@ -25,7 +25,10 @@ st.title("Welcome! Please Login or Create an Account")
 
 # --- Helper Functions for Firebase User Management ---
 def register_user(username, name, hashed_pw):
-    """Register a new user by storing their credentials in Firebase under 'users/{username}/credentials'."""
+    """
+    Register a new user by storing their credentials in Firebase under 'users/{username}/credentials'.
+    Returns True if registration succeeded; False if the username already exists.
+    """
     ref = db.reference("users/" + username)
     data = ref.get() or {}
     if "credentials" in data:
@@ -36,7 +39,9 @@ def register_user(username, name, hashed_pw):
         return True
 
 def login_user(username, password):
-    """Check credentials stored in Firebase and return (True, name) if valid."""
+    """
+    Check credentials stored in Firebase and return (True, name) if valid.
+    """
     ref = db.reference("users/" + username + "/credentials")
     creds = ref.get()
     if creds is None:
@@ -67,10 +72,7 @@ if action == "Register":
             hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
             success = register_user(username, name, hashed_pw)
             if success:
-                st.success("Account created successfully! Logging you in...")
-                st.session_state.logged_in = True
-                st.session_state.username = username
-                st.session_state.name = name
+                st.success("Account created successfully! Please switch to the Login tab and log in.")
             else:
                 st.error("Username already exists. Please choose another.")
 
@@ -94,6 +96,5 @@ if action == "Login":
 
 # --- Automatic redirection to the habit tracker page if logged in ---
 if "logged_in" in st.session_state and st.session_state.logged_in:
-    # Use a meta refresh to redirect to the habit tracker page.
     st.markdown("<meta http-equiv='refresh' content='0; url=/habittracker'>", unsafe_allow_html=True)
     st.stop()
