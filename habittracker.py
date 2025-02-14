@@ -213,6 +213,9 @@ def shift_month(date_obj, delta):
 def compute_current_streak(habit_data, today):
     streak = 0
     d = today
+    # If today's entry is missing, start counting from yesterday.
+    if d.strftime("%Y-%m-%d") not in habit_data:
+        d -= datetime.timedelta(days=1)
     while True:
         d_str = d.strftime("%Y-%m-%d")
         if d_str in habit_data and habit_data[d_str] == "succeeded":
