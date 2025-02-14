@@ -18,7 +18,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.stop()
 
 # Use the logged-in username as the unique user ID.
-user_id = st.session_state.username  # Should be "sammysams1234"
+user_id = st.session_state.username  # For example: "sammysams1234"
 
 # --- Page Config ---
 st.set_page_config(page_title="Pulse", page_icon="assets/app_icon.png", layout="centered")
@@ -38,9 +38,13 @@ if not firebase_admin._apps:
 
 # --- Helper Function: Get Base64 Image ---
 def get_base64_image(image_path):
-    with open(image_path, "rb") as img_file:
-        encoded = base64.b64encode(img_file.read()).decode()
-    return encoded
+    try:
+        with open(image_path, "rb") as img_file:
+            encoded = base64.b64encode(img_file.read()).decode()
+        return encoded
+    except Exception as e:
+        st.error(f"Error loading image at {image_path}: {e}")
+        return ""
 
 # --- Configuration & Data Persistence ---
 OUTCOME_COLORS = {"succeeded": "#4BB543", "failed": "transparent"}
@@ -48,9 +52,7 @@ success_green = "#4BB543"
 
 def load_user_data(user_id):
     ref = db.reference(f"users/{user_id}")
-    data = ref.get()
-    if not isinstance(data, dict):
-        data = {}
+    data = ref.get() or {}
     if "habits" not in data or not isinstance(data["habits"], dict):
         data["habits"] = {}
         ref.child("habits").set(data["habits"])
@@ -183,7 +185,7 @@ with st.expander("Manage Habits", expanded=False):
             st.error("This habit already exists!")
         else:
             st.session_state.data["habits"][new_habit] = {}
-            st.session_state.data["goals"][new_habit] = int(float(new_goal))
+            st.session_state.data["goals"][new_habit] = int(new_goal)
             update_streaks_for_habit(user_id, new_habit, st.session_state.data["habits"][new_habit], today)
             save_user_data(user_id, st.session_state.data)
             st.success(f"Habit '{new_habit}' added successfully!")
@@ -192,12 +194,12 @@ with st.expander("Manage Habits", expanded=False):
     st.subheader("Manage Habits")
     if st.session_state.data["habits"]:
         for habit in list(st.session_state.data["habits"].keys()):
-            current_goal = int(float(st.session_state.data["goals"].get(habit, 0)))
+            current_goal = int(st.session_state.data["goals"].get(habit, 0))
             col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
             col1.markdown(f"**{habit}**")
             new_goal_val = st.number_input("Goal", min_value=1, value=current_goal, key=f"edit_goal_{habit}")
             if col3.button("Update", key=f"update_goal_{habit}"):
-                st.session_state.data["goals"][habit] = int(float(new_goal_val))
+                st.session_state.data["goals"][habit] = int(new_goal_val)
                 save_user_data(user_id, st.session_state.data)
                 st.success(f"Updated goal for '{habit}' to {new_goal_val}!")
                 force_rerun()
@@ -319,7 +321,7 @@ else:
         summary_compare = pd.merge(current_summary, last_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["last_success_count"] = summary_compare["last_success_count"].astype(int)
-        summary_compare["goal"] = summary_compare["habit"].apply(lambda habit: int(float(st.session_state.data["goals"].get(habit, 0))))
+        summary_compare["goal"] = summary_compare["habit"].apply(lambda habit: int(st.session_state.data["goals"].get(habit, 0)))
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
         for idx, row in sorted_compare.iterrows():
@@ -450,7 +452,7 @@ else:
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
         summary_compare["goal"] = summary_compare["habit"].apply(
-            lambda habit: int(float(st.session_state.data["goals"].get(habit, 0)) / 7 * num_days)
+            lambda habit: int(st.session_state.data["goals"].get(habit, 0) / 7 * num_days)
         )
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
@@ -574,7 +576,7 @@ else:
         summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
         days_in_year = 366 if calendar.isleap(selected_year) else 365
         summary_compare["goal"] = summary_compare["habit"].apply(
-            lambda habit: int(float(st.session_state.data["goals"].get(habit, 0)) / 7 * days_in_year)
+            lambda habit: int(st.session_state.data["goals"].get(habit, 0) / 7 * days_in_year)
         )
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
