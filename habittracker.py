@@ -89,7 +89,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     header_html = f"""
     <div style="display: flex; align-items: center; margin-bottom: 20px;">
         <img src="data:image/png;base64,{base64_image}" alt="App Icon" style="height: 100px; margin-right: 20px;">
-        <h1 style="color: white; font-size: 32px;">Welcome to Pulse Habit Tracking! Please Login or Create an Account</h1>
+        <h1 style="color: #0096FF; font-size: 32px;">Welcome to Pulse Habit Tracking! Please Login or Create an Account</h1>
     </div>
     """
     st.markdown(header_html, unsafe_allow_html=True)
