@@ -207,15 +207,12 @@ for habit in st.session_state.data["habits"]:
 # ----------------------------------------------------
 # PAGE HEADER: Robot Logo & Animated Typed Messages
 # ----------------------------------------------------
-# Embed the robot logo image as Base64
 base64_image = get_base64_image("assets/app_icon.png")
-
-# Use st.components.v1.html to ensure the JavaScript executes
 import streamlit.components.v1 as components
 header_html = f"""
 <div style="display: flex; align-items: center; margin-bottom: 20px;">
     <img src="data:image/png;base64,{base64_image}" alt="Robot Logo" style="height: 100px; margin-right: 20px;">
-    <p id="typed" style="font-size: 24px; margin: 0;"></p>
+    <p id="typed" style="font-size: 24px; margin: 0; color: white;"></p>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
 <script>
@@ -254,13 +251,10 @@ with st.expander("Manage Habits", expanded=False):
 
     st.subheader("Manage Existing Habits")
     if st.session_state.data["habits"]:
-        # For each habit, display the habit name, its current goal (editable),
-        # an "Update" button to save a new goal, and a "Remove" button.
         for habit in list(st.session_state.data["habits"].keys()):
             current_goal = st.session_state.data["goals"].get(habit, 1)
             col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
             col1.markdown(f"**{habit}**")
-            # Editable numeric input for goal
             new_goal_val = col2.number_input("Goal", min_value=1, value=current_goal, key=f"edit_goal_{habit}")
             if col3.button("Update", key=f"update_goal_{habit}"):
                 st.session_state.data["goals"][habit] = new_goal_val
@@ -319,10 +313,8 @@ for habit in habits:
             else:
                 st.session_state.data["habits"][habit][date_str] = new
             save_user_data(user_id, st.session_state.data)
-            # Update streaks immediately after a habit update
             update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
     
-    # When displaying streaks, pull from stored streak data:
     streak_data = st.session_state.data.get("streaks", {}).get(habit, {})
     current_streak = streak_data.get("current", 0)
     longest_streak = streak_data.get("longest", 0)
