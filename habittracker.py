@@ -1,5 +1,4 @@
 import streamlit as st
-import bcrypt
 import datetime
 import os
 import calendar
@@ -13,56 +12,20 @@ import firebase_admin
 from firebase_admin import credentials, db
 import streamlit.components.v1 as components
 
-# ------------------------------------------------
-# SIMPLE LOGIN SYSTEM USING BCRYPT
-# ------------------------------------------------
-# Precomputed bcrypt hashes for demo users.
-# (These hashes were generated for "password123" and "mypassword" respectively.)
-# In production, store and manage your credentials securely!
-CREDENTIALS = {
-    "alice": {
-        "name": "Alice Example",
-        "password": "$2b$12$KIXJwH.U67t9LE6F1GJkCu0H5kCZY61LGZ/fW.uH5.vwkK6.vIh1C"  # hash for "password123"
-    },
-    "bob": {
-        "name": "Bob Example",
-        "password": "$2b$12$R9z7t/RoCHv1.s9RyvE6gO.aCzkJrFa6DVEfsVKWe07s3/46jeNd6"  # hash for "mypassword"
-    }
-}
-
-def check_password(plain_password, hashed_password):
-    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
-
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-
-if not st.session_state.logged_in:
-    st.title("Login")
-    username_input = st.text_input("Username")
-    password_input = st.text_input("Password", type="password")
-    if st.button("Login"):
-        if username_input in CREDENTIALS and check_password(password_input, CREDENTIALS[username_input]["password"]):
-            st.session_state.logged_in = True
-            st.session_state.username = username_input
-            st.success(f"Welcome, {CREDENTIALS[username_input]['name']}!")
-        else:
-            st.error("Invalid username or password")
+# --- Require Login ---
+if "logged_in" not in st.session_state or not st.session_state.logged_in:
+    st.error("You must be logged in to view this page. Please go to the login page.")
     st.stop()
 
-# Use the logged-in username as the unique user_id
-user_id = st.session_state.username
+user_id = st.session_state.username  # Use logged-in username as user_id
 
-# ------------------------------------------------
-# HELPER FUNCTION TO GET BASE64 IMAGE
-# ------------------------------------------------
+# --- Helper Function: Get Base64 Image ---
 def get_base64_image(image_path):
     with open(image_path, "rb") as img_file:
         encoded = base64.b64encode(img_file.read()).decode()
     return encoded
 
-# ------------------------------------------------
-# FIREBASE ADMIN IMPORTS & INITIALIZATION
-# ------------------------------------------------
+# --- Firebase Admin Initialization ---
 if not firebase_admin._apps:
     firebase_creds_json = os.environ.get("FIREBASE_CREDENTIALS")
     if firebase_creds_json:
@@ -82,15 +45,8 @@ if not firebase_admin._apps:
     else:
         st.error("FIREBASE_CREDENTIALS environment variable not set!")
 
-# ------------------------------------------------
-# PAGE CONFIGURATION & CUSTOM CSS
-# ------------------------------------------------
-st.set_page_config(
-    page_title="Pulse",
-    page_icon="assets/app_icon.png",
-    layout="centered"
-)
-
+# --- Page Configuration & Custom CSS ---
+st.set_page_config(page_title="Pulse", page_icon="assets/app_icon.png", layout="centered")
 st.markdown(
     """
     <style>
@@ -113,13 +69,8 @@ st.markdown(
     """, unsafe_allow_html=True,
 )
 
-# ------------------------------------------------
-# CONFIGURATION & DATA PERSISTENCE (User-Specific Data)
-# ------------------------------------------------
-OUTCOME_COLORS = {
-    "succeeded": "#4BB543",
-    "failed": "transparent"
-}
+# --- Configuration & Data Persistence ---
+OUTCOME_COLORS = {"succeeded": "#4BB543", "failed": "transparent"}
 success_green = "#4BB543"
 
 def load_user_data(user_id):
@@ -136,7 +87,6 @@ def load_user_data(user_id):
     if "streaks" not in data or not isinstance(data["streaks"], dict):
         data["streaks"] = {}
         ref.child("streaks").set(data["streaks"])
-    # (Optional) Migrate habit name if needed:
     if "Sleeping before 12" in data["habits"]:
         data["habits"]["Sleep"] = data["habits"].pop("Sleeping before 12")
         ref.child("habits").set(data["habits"])
@@ -149,9 +99,6 @@ def save_user_data(user_id, data):
     if "streaks" in data:
         ref.child("streaks").set(data["streaks"])
 
-# ------------------------------------------------
-# UTILITY FUNCTIONS
-# ------------------------------------------------
 def shift_month(date_obj, delta):
     year = date_obj.year
     month = date_obj.month + delta
@@ -177,8 +124,7 @@ def compute_current_streak(habit_data, today):
 
 def compute_longest_streak(habit_data, today):
     dates = [datetime.datetime.strptime(d_str, "%Y-%m-%d").date()
-             for d_str in habit_data
-             if datetime.datetime.strptime(d_str, "%Y-%m-%d").date() <= today]
+             for d_str in habit_data if datetime.datetime.strptime(d_str, "%Y-%m-%d").date() <= today]
     if not dates:
         return 0
     start = min(dates)
@@ -197,18 +143,13 @@ def compute_longest_streak(habit_data, today):
 
 def get_habit_color(habit):
     h = hashlib.md5(habit.encode('utf-8')).hexdigest()
-    color = '#' + h[:6]
-    return color
+    return '#' + h[:6]
 
 def update_streaks_for_habit(user_id, habit, habit_data, today):
     current_streak = compute_current_streak(habit_data, today)
     longest_streak = compute_longest_streak(habit_data, today)
     today_str = today.strftime("%Y-%m-%d")
-    data_to_store = {
-        "current": current_streak,
-        "longest": longest_streak,
-        "last_update": today_str
-    }
+    data_to_store = {"current": current_streak, "longest": longest_streak, "last_update": today_str}
     if "streaks" not in st.session_state.data:
         st.session_state.data["streaks"] = {}
     st.session_state.data["streaks"][habit] = data_to_store
@@ -219,9 +160,7 @@ def force_rerun():
     if hasattr(st, "experimental_rerun"):
         st.experimental_rerun()
 
-# ------------------------------------------------
-# INITIALIZE SESSION STATE
-# ------------------------------------------------
+# --- Initialize Session State ---
 if "data" not in st.session_state:
     st.session_state.data = load_user_data(user_id)
 if "tracker_month" not in st.session_state:
@@ -232,17 +171,12 @@ if "tracker_week" not in st.session_state:
     today = datetime.date.today()
     st.session_state.tracker_week = today - datetime.timedelta(days=today.weekday())
 
-# ------------------------------------------------
-# UPDATE STREAKS FOR EACH HABIT
-# ------------------------------------------------
 today = datetime.date.today()
 today_str = today.strftime("%Y-%m-%d")
 for habit in st.session_state.data["habits"]:
     update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
 
-# ------------------------------------------------
-# PAGE HEADER: Logo & Animated Messages
-# ------------------------------------------------
+# --- Page Header ---
 base64_image = get_base64_image("assets/app_icon.png")
 header_html = f"""
 <div style="display: flex; align-items: center; margin-bottom: 20px;">
@@ -262,9 +196,7 @@ header_html = f"""
 """
 components.html(header_html, height=150)
 
-# ------------------------------------------------
-# MANAGE HABITS SECTION (Add, Edit Goal & Remove)
-# ------------------------------------------------
+# --- Manage Habits Section ---
 with st.expander("Manage Habits", expanded=False):
     st.subheader("Add Habit")
     new_habit = st.text_input("Habit", key="new_habit_input")
@@ -306,9 +238,7 @@ with st.expander("Manage Habits", expanded=False):
     else:
         st.info("No habits available.")
 
-# ------------------------------------------------
-# HABIT TRACKER SECTION (Weekly Editing)
-# ------------------------------------------------
+# --- Habit Tracker Section (Weekly Editing) ---
 week_start = today - datetime.timedelta(days=today.weekday())
 week_dates = [week_start + datetime.timedelta(days=i) for i in range(7)]
 
@@ -356,11 +286,8 @@ for habit in habits:
     row_cols[9].markdown(f"**{longest_streak}**")
 st.markdown('</div>', unsafe_allow_html=True)
 
-# ------------------------------------------------
-# ANALYTICS SECTION
-# ------------------------------------------------
+# --- Analytics Section ---
 st.markdown("---")
-# Build a DataFrame of successful habit records
 habit_colors = {habit: get_habit_color(habit) for habit in st.session_state.data["habits"].keys()}
 records = []
 for habit, days in st.session_state.data["habits"].items():
@@ -383,7 +310,6 @@ else:
     df = pd.DataFrame(records)
     
     if view_option == "Weekly":
-        # --- WEEKLY NAVIGATION ---
         current_week_start = st.session_state.tracker_week
         current_week_end = current_week_start + datetime.timedelta(days=6)
         col_prev, col_center, col_next = st.columns([1,2,1])
@@ -398,7 +324,6 @@ else:
                 st.session_state.tracker_week = st.session_state.tracker_week + datetime.timedelta(days=7)
                 force_rerun()
         
-        # --- DATA FOR WEEKLY ANALYTICS ---
         last_week_start = current_week_start - datetime.timedelta(days=7)
         last_week_end = current_week_start - datetime.timedelta(days=1)
         mask_current = (df["date"].dt.date >= current_week_start) & (df["date"].dt.date <= current_week_end)
@@ -465,7 +390,6 @@ else:
         )
         st.plotly_chart(fig_compare, use_container_width=True)
                 
-        # --- WEEKLY HEATMAP ---
         week_dates = [current_week_start + datetime.timedelta(days=i) for i in range(7)]
         heatmap_data_weekly = []
         text_data_weekly = []
@@ -514,7 +438,6 @@ else:
         st.plotly_chart(fig_heatmap_weekly, use_container_width=True)
                 
     elif view_option == "Monthly":
-        # --- MONTHLY NAVIGATION ---
         current_month_start = st.session_state.tracker_month
         year = current_month_start.year
         month = current_month_start.month
