@@ -57,7 +57,7 @@ def get_base64_image(image_path):
 # LOGIN & REGISTRATION (Always the FIRST screen)
 # =====================================================
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    # Display header with icon and title
+    # Display header with icon and title (text in white)
     base64_image = get_base64_image("assets/app_icon.png")
     header_html = f"""
     <div style="display: flex; align-items: center; margin-bottom: 20px;">
@@ -94,13 +94,13 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
             else:
                 return False, None
 
-    # Use session state to store the current action; default to Login.
+    # Use session state to store the current action; default to "Login"
     if "action" not in st.session_state:
         st.session_state.action = "Login"
-        
-    # --- UI: Choose to Login or Register (no label) ---
-    action = st.radio("", ["Login", "Register"], index=0 if st.session_state.action=="Login" else 1)
-
+    
+    # --- UI: Radio buttons without label ---
+    action = st.radio("", ["Login", "Register"], index=0 if st.session_state.action == "Login" else 1)
+    
     if action == "Register":
         st.subheader("Create an Account")
         username = st.text_input("Username", key="reg_username")
@@ -118,8 +118,8 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                 success = register_user(username, name, hashed_pw)
                 if success:
                     st.success("Account created successfully! Redirecting you to the Login page...")
-                    st.session_state.action = "Login"  # Switch to login view
-                    st.experimental_rerun()  # Force a re-run so that the login form is shown
+                    st.session_state.action = "Login"  # Switch to the login view
+                    # (Note: If the UI does not update immediately, please click the Login radio button.)
                 else:
                     st.error("Username already exists. Please choose another.")
 
@@ -146,7 +146,6 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
 # =====================================================
 # HELPER FUNCTIONS COMMON TO HABIT TRACKER & JOURNAL
 # =====================================================
-# (Re-define get_base64_image if needed; otherwise you can remove this duplicate.)
 def get_base64_image(image_path):
     try:
         with open(image_path, "rb") as img_file:
@@ -459,7 +458,6 @@ if page == "Habit Tracker 📆":
     # Analytics Section
     # -------------------------------
     st.markdown("---")
-    # Container for the analytics filter dropdown:
     with st.container():
         st.markdown("### Analytics Filter")
         view_option = st.selectbox(
