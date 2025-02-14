@@ -194,7 +194,7 @@ if "data" not in st.session_state:
 if "tracker_month" not in st.session_state:
     st.session_state.tracker_month = datetime.date.today().replace(day=1)
 if "analytics_view" not in st.session_state:
-    st.session_state.analytics_view = "Compare to Last Week"
+    st.session_state.analytics_view = "Weekly"
 
 # ----------------------------------------------------
 # Update streaks for each habit on every load
@@ -344,13 +344,13 @@ if not records:
 else:
     view_option = st.selectbox(
         "Select Analytics View",
-        ["Compare to Last Week", "Monthly", "Yearly"],
-        index=["Compare to Last Week", "Monthly", "Yearly"].index(st.session_state.analytics_view)
+        ["Weekly", "Monthly", "Yearly"],
+        index=["Weekly", "Monthly", "Yearly"].index(st.session_state.analytics_view)
     )
     st.session_state.analytics_view = view_option
     df = pd.DataFrame(records)
     
-    if view_option == "Compare to Last Week":
+    if view_option == "Weekly":
         current_week_start = today - datetime.timedelta(days=today.weekday())
         current_week_end = current_week_start + datetime.timedelta(days=6)
         last_week_start = current_week_start - datetime.timedelta(days=7)
