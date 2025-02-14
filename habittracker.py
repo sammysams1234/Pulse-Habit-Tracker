@@ -112,8 +112,9 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                     st.session_state.logged_in = True
                     st.session_state.username = username
                     st.session_state.name = name
+                    # Set default page to Habit Tracker so that it mimics a sidebar click.
+                    st.session_state.page = "Habit Tracker"
                     st.success(f"Welcome, {name}!")
-                    # Instead of st.experimental_rerun(), simply let the app continue
                 else:
                     st.error("Invalid username or password.")
     st.stop()  # Stop execution until the user logs in.
@@ -135,7 +136,6 @@ def get_base64_image(image_path):
 # --- Dummy force rerun function (st.experimental_rerun is disabled) ---
 def force_rerun():
     # This function is a placeholder.
-    # Remove any state that would normally be refreshed manually.
     pass
 
 # =====================================================
@@ -345,7 +345,13 @@ def get_summary_for_entries(entries_text, period):
 # APP NAVIGATION (Sidebar)
 # =====================================================
 
-page = st.sidebar.radio("Navigation", ["Habit Tracker", "Journal"])
+# If the user hasn't set a page yet, default to Habit Tracker.
+if "page" not in st.session_state:
+    st.session_state.page = "Habit Tracker"
+
+page_options = ["Habit Tracker", "Journal"]
+page = st.sidebar.radio("Navigation", page_options, index=page_options.index(st.session_state.page))
+st.session_state.page = page  # update current page in session state
 st.sidebar.write(f"Logged in as **{st.session_state.name}**")
 
 # -------------------------------
