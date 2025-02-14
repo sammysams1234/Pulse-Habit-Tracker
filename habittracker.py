@@ -349,7 +349,7 @@ def get_summary_for_entries(entries_text, period):
 if "page" not in st.session_state:
     st.session_state.page = "Habit Tracker"
 
-page_options = ["Habit Tracker", "Journal"]
+page_options = ["Habit Tracker 📆", "Journal 🗒️"]
 page = st.sidebar.radio("Navigation", page_options, index=page_options.index(st.session_state.page))
 st.session_state.page = page  # update current page in session state
 st.sidebar.write(f"Logged in as **{st.session_state.name}**")
