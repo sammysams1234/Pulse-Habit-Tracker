@@ -95,18 +95,15 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.markdown(header_html, unsafe_allow_html=True)
 
     # --- Helper Functions for Firebase User Management ---
-    def register_user(username, name, hashed_pw):
+    def register_user(username, display_name, hashed_pw):
         ref = db.reference("users/" + username)
         data = ref.get() or {}
         if "credentials" in data:
             return False  # User already exists.
         else:
-            # Encrypt the user's name only (username is used as the key)
-            encrypted_name = fernet.encrypt(name.encode()).decode()
-            
-            # Save credentials (password is hashed)
+            # Save credentials: store display_name in plain text and password hashed
             data["credentials"] = {
-                "name": encrypted_name,
+                "display_name": display_name,
                 "password": hashed_pw
             }
             # Combine all other user data into one encrypted blob.
@@ -123,13 +120,9 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
         else:
             stored_pw = creds.get("password")
             if stored_pw and bcrypt.checkpw(password.encode(), stored_pw.encode()):
-                try:
-                    # Decrypt the stored name
-                    decrypted_name = fernet.decrypt(creds.get("name").encode()).decode()
-                except Exception as e:
-                    st.error("Error decrypting name: " + str(e))
-                    return False, None
-                return True, decrypted_name
+                # Retrieve display name from credentials (no decryption needed)
+                display_name = creds.get("display_name")
+                return True, display_name
             else:
                 return False, None
 
@@ -139,18 +132,18 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     if action == "Register":
         st.subheader("Create an Account")
         username = st.text_input("Username", key="reg_username")
-        name = st.text_input("Display Name", key="reg_name")
+        display_name = st.text_input("Display Name", key="reg_display_name")
         password = st.text_input("Password", type="password", key="reg_password")
         confirm_password = st.text_input("Confirm Password", type="password", key="reg_confirm")
         
         if st.button("Register"):
-            if not username or not name or not password:
+            if not username or not display_name or not password:
                 st.error("Please fill in all fields.")
             elif password != confirm_password:
                 st.error("Passwords do not match.")
             else:
                 hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-                success = register_user(username, name, hashed_pw)
+                success = register_user(username, display_name, hashed_pw)
                 if success:
                     st.success("Account created successfully! Please switch to the Login tab and log in.")
                 else:
@@ -165,14 +158,14 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
             if not username or not password:
                 st.error("Please enter both username and password.")
             else:
-                success, name = login_user(username, password)
+                success, display_name = login_user(username, password)
                 if success:
                     st.session_state.logged_in = True
                     st.session_state.username = username
-                    st.session_state.name = name
+                    st.session_state.name = display_name
                     # Set default page to Habit Tracker so it mimics a sidebar click.
                     st.session_state.page = "Habit Tracker 📆"
-                    st.success(f"Welcome, {name}!")
+                    st.success(f"Welcome, {display_name}!")
                 else:
                     st.error("Invalid username or password.")
     st.stop()  # Stop execution until the user logs in.
