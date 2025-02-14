@@ -134,29 +134,10 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
             else:
                 return False, None
 
-    # --- UI: Use Tabs for Login and Register ---
-    tab1, tab2 = st.tabs(["Login", "Register"])
+    # --- UI: Choose to Login or Register ---
+    action = st.radio("", ["Login", "Register"])
 
-    with tab1:
-        st.subheader("Log In")
-        username = st.text_input("Username", key="login_username")
-        password = st.text_input("Password", type="password", key="login_password")
-        
-        if st.button("Login"):
-            if not username or not password:
-                st.error("Please enter both username and password.")
-            else:
-                success, display_name = login_user(username, password)
-                if success:
-                    st.session_state.logged_in = True
-                    st.session_state.username = username
-                    st.session_state.name = display_name  
-                    st.session_state.page = "Pulse"
-                    st.success(f"Welcome, {display_name}!")
-                else:
-                    st.error("Invalid username or password.")
-
-    with tab2:
+    if action == "Register":
         st.subheader("Create an Account")
         username = st.text_input("Username", key="reg_username")
         display_name = st.text_input("Display Name", key="reg_display_name")
@@ -172,9 +153,30 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                 hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
                 success = register_user(username, display_name, hashed_pw)
                 if success:
-                    st.success("Account created successfully! Please switch to the Login tab to log in.")
+                    st.success("Account created successfully! Please switch to the Login tab and log in.")
                 else:
                     st.error("Username already exists. Please choose another.")
+
+    if action == "Login":
+        st.subheader("Log In")
+        username = st.text_input("Username", key="login_username")
+        password = st.text_input("Password", type="password", key="login_password")
+        
+        if st.button("Login"):
+            if not username or not password:
+                st.error("Please enter both username and password.")
+            else:
+                success, display_name = login_user(username, password)
+                if success:
+                    st.session_state.logged_in = True
+                    st.session_state.username = username
+                    # We'll keep the display name in session_state but won't show it on the header
+                    st.session_state.name = display_name  
+                    # Default page name in case we need it
+                    st.session_state.page = "Pulse"
+                    st.success(f"Welcome, {display_name}!")
+                else:
+                    st.error("Invalid username or password.")
     st.stop()  # Stop execution until the user logs in.
 
 # =====================================================
@@ -208,41 +210,21 @@ def shift_month(date_obj, delta):
         year -= 1
     return datetime.date(year, month, 1)
 
-# --- Updated current streak calculation ---
 def compute_current_streak(habit_data, today):
-    # Collect all dates (as date objects) where the habit was succeeded
-    dates = []
-    for d_str, outcome in habit_data.items():
-        try:
-            d_date = datetime.datetime.strptime(d_str, "%d/%m/%Y").date()
-            if d_date <= today and outcome == "succeeded":
-                dates.append(d_date)
-        except Exception:
-            continue
-    if not dates:
-        return 0
-    # Start with the latest succeeded date and count backwards consecutively
-    last_date = max(dates)
     streak = 0
-    d = last_date
+    d = today
     while True:
-        d_str = d.strftime("%d/%m/%Y")
+        d_str = d.strftime("%Y-%m-%d")
         if d_str in habit_data and habit_data[d_str] == "succeeded":
             streak += 1
-            d -= datetime.timedelta(days=1)
         else:
             break
+        d -= datetime.timedelta(days=1)
     return streak
 
 def compute_longest_streak(habit_data, today):
-    dates = []
-    for d_str, outcome in habit_data.items():
-        try:
-            d_date = datetime.datetime.strptime(d_str, "%d/%m/%Y").date()
-            if d_date <= today:
-                dates.append(d_date)
-        except Exception:
-            continue
+    dates = [datetime.datetime.strptime(d_str, "%Y-%m-%d").date()
+             for d_str in habit_data if datetime.datetime.strptime(d_str, "%Y-%m-%d").date() <= today]
     if not dates:
         return 0
     start = min(dates)
@@ -250,7 +232,7 @@ def compute_longest_streak(habit_data, today):
     current = 0
     d = start
     while d <= today:
-        d_str = d.strftime("%d/%m/%Y")
+        d_str = d.strftime("%Y-%m-%d")
         if habit_data.get(d_str) == "succeeded":
             current += 1
         else:
@@ -266,7 +248,7 @@ def get_habit_color(habit):
 def update_streaks_for_habit(user_id, habit, habit_data, today):
     current_streak = compute_current_streak(habit_data, today)
     longest_streak = compute_longest_streak(habit_data, today)
-    today_str = today.strftime("%d/%m/%Y")
+    today_str = today.strftime("%Y-%m-%d")
     data_to_store = {"current": current_streak, "longest": longest_streak, "last_update": today_str}
     if "streaks" not in st.session_state.data:
         st.session_state.data["streaks"] = {}
@@ -290,7 +272,7 @@ def filter_entries_by_period(entries, period, today):
     filtered = {}
     for date_str, entry in entries.items():
         try:
-            entry_date = datetime.datetime.strptime(date_str, "%d/%m/%Y").date()
+            entry_date = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
         except Exception:
             continue
         if period == "Daily" and entry_date == today:
@@ -357,7 +339,7 @@ if "tracker_week" not in st.session_state:
     st.session_state.tracker_week = today - datetime.timedelta(days=today.weekday())
 
 today = datetime.date.today()
-today_str = today.strftime("%d/%m/%Y")
+today_str = today.strftime("%Y-%m-%d")
 for habit in st.session_state.data["habits"]:
     update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
 
@@ -434,7 +416,7 @@ with tab_pulse:
             color = get_habit_color(habit)
             row_cols[0].markdown(f"**<span style='color:{color}'>{habit}</span>**", unsafe_allow_html=True)
             for i, current_date in enumerate(week_dates):
-                date_str = current_date.strftime("%d/%m/%Y")
+                date_str = current_date.strftime("%Y-%m-%d")
                 outcome = st.session_state.data["habits"][habit].get(date_str, None)
                 label = "✅" if outcome == "succeeded" else "❌" if outcome == "failed" else str(current_date.day)
                 if row_cols[i+1].button(label, key=f"weekly_{habit}_{date_str}"):
@@ -474,8 +456,7 @@ with tab_analytics:
         for date_str, outcome in days.items():
             if outcome == "succeeded":
                 try:
-                    # Use the new date format when converting
-                    date_obj = pd.to_datetime(date_str, format="%d/%m/%Y")
+                    date_obj = pd.to_datetime(date_str)
                     records.append({"habit": habit, "date": date_obj})
                 except Exception:
                     pass
@@ -495,7 +476,7 @@ with tab_analytics:
                 if st.button("◀ Previous Week", key="prev_week"):
                     st.session_state.tracker_week -= datetime.timedelta(days=7)
             with col_center:
-                st.markdown(f"### Week of {current_week_start.strftime('%d/%m/%Y')}")
+                st.markdown(f"### Week of {current_week_start.strftime('%Y-%m-%d')}")
             with col_next:
                 if st.button("Next Week ▶", key="next_week"):
                     st.session_state.tracker_week += datetime.timedelta(days=7)
@@ -569,7 +550,7 @@ with tab_analytics:
                 row = []
                 text_row = []
                 for day in week_dates:
-                    day_str = day.strftime("%d/%m/%Y")
+                    day_str = day.strftime("%Y-%m-%d")
                     outcome = st.session_state.data["habits"][habit].get(day_str)
                     if outcome == "succeeded":
                         val = 2
@@ -702,7 +683,7 @@ with tab_analytics:
                 row = []
                 text_row = []
                 for day in days:
-                    day_str = day.strftime("%d/%m/%Y")
+                    day_str = day.strftime("%Y-%m-%d")
                     outcome = st.session_state.data["habits"][habit].get(day_str)
                     if outcome == "succeeded":
                         val = 2
@@ -865,7 +846,7 @@ with tab_journal:
     components.html(build_header_html("Pulse Journal"), height=150)
 
     today = datetime.date.today()
-    today_str = today.strftime("%d/%m/%Y")
+    today_str = today.strftime("%Y-%m-%d")
     st.subheader(f"Journal Entry for {today_str}")
 
     existing_entry = get_journal_entry(today_str)
