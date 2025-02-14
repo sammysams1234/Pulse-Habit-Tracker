@@ -480,7 +480,7 @@ if page == "Habit Tracker 📆":
                 except Exception:
                     pass
     if not records:
-        st.info("No habit success data available yet. Start tracking your habits!")
+        st.info("No habit tracking data available yet. Start tracking your habits by marking the calendar!")
     else:
         df = pd.DataFrame(records)
         if view_option == "Weekly":
