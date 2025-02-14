@@ -198,7 +198,15 @@ for habit in st.session_state.data["habits"]:
 # ----------------------------------------------------
 # PAGE CONTENT
 # ----------------------------------------------------
-st.title("Pulse - Habit Tracker 📆")
+st.markdown(
+    """
+    <h1 style="display: flex; align-items: center;">
+        Pulse - Habit Tracker 
+        <img src="assets/app_icon.png" alt="Custom Icon" style="height: 1em; margin-left: 0.5em;">
+    </h1>
+    """,
+    unsafe_allow_html=True
+)
 
 # Add a typewriter-style motivational message.
 import streamlit.components.v1 as components
