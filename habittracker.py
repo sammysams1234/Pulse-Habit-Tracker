@@ -307,6 +307,7 @@ def get_summary_for_entries(entries_text, period):
     prompt = (
         f"Please summarize the following journal entries for a {period.lower()} period. "
         "Focus on the emotional tone, the main feelings expressed, and possible underlying causes. "
+        "Write as if you are talking to the user."
         "Provide a brief motivational conclusion. **Do not prepend any heading like 'Summary:'. "
         "Only return the summary text.**\n\n"
         f"{entries_text}"
