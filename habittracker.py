@@ -209,25 +209,26 @@ for habit in st.session_state.data["habits"]:
 # ----------------------------------------------------
 # Embed the robot logo image as Base64
 base64_image = get_base64_image("assets/app_icon.png")
-st.markdown(
-    f"""
-    <div style="display: flex; align-items: center; margin-bottom: 20px;">
-        <img src="data:image/png;base64,{base64_image}" alt="Robot Logo" style="height: 100px; margin-right: 20px;">
-        <p id="typed" style="font-size: 24px; margin: 0;"></p>
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
-    <script>
-      var typed = new Typed('#typed', {{
-        strings: ["Remember why you started", "Remember the euphoric highs of success", "Follow yourself"],
-        typeSpeed: 50,
-        backSpeed: 25,
-        backDelay: 2000,
-        loop: true
-      }});
-    </script>
-    """,
-    unsafe_allow_html=True
-)
+
+# Use st.components.v1.html to ensure the JavaScript executes
+import streamlit.components.v1 as components
+header_html = f"""
+<div style="display: flex; align-items: center; margin-bottom: 20px;">
+    <img src="data:image/png;base64,{base64_image}" alt="Robot Logo" style="height: 100px; margin-right: 20px;">
+    <p id="typed" style="font-size: 24px; margin: 0;"></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
+<script>
+  var typed = new Typed('#typed', {{
+    strings: ["Remember why you started", "Remember the euphoric highs of success", "Follow yourself"],
+    typeSpeed: 50,
+    backSpeed: 25,
+    backDelay: 2000,
+    loop: true
+  }});
+</script>
+"""
+components.html(header_html, height=150)
 
 ###########################################
 # Manage Habits Section (Add, Edit Goal & Remove)
