@@ -139,7 +139,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     if action == "Register":
         st.subheader("Create an Account")
         username = st.text_input("Username", key="reg_username")
-        name = st.text_input("Name", key="reg_name")
+        name = st.text_input("Display Name", key="reg_name")
         password = st.text_input("Password", type="password", key="reg_password")
         confirm_password = st.text_input("Confirm Password", type="password", key="reg_confirm")
         
