@@ -163,8 +163,8 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                     st.session_state.logged_in = True
                     st.session_state.username = username
                     st.session_state.name = display_name
-                    # Set default page to Habit Tracker so it mimics a sidebar click.
-                    st.session_state.page = "Habit Tracker 📆"
+                    # Set default page to Pulse so it mimics a sidebar click.
+                    st.session_state.page = "Pulse"
                     st.success(f"Welcome, {display_name}!")
                 else:
                     st.error("Invalid username or password.")
@@ -327,41 +327,31 @@ def get_summary_for_entries(entries_text, period):
 # APP NAVIGATION (Sidebar)
 # =====================================================
 if "page" not in st.session_state:
-    st.session_state.page = "Habit Tracker 📆"
+    st.session_state.page = "Pulse"
 
-page_options = ["Habit Tracker 📆", "Journal 🗒️"]
+# Changed navigation options to "Pulse" and "Daily Journal"
+page_options = ["Pulse", "Daily Journal"]
 page = st.sidebar.radio("Navigation", page_options, index=page_options.index(st.session_state.page))
 st.session_state.page = page
 st.sidebar.write(f"Logged in as **{st.session_state.name}**")
 
 # -------------------------------
-# HEADER: LOGO & MOTIVATIONAL MESSAGES
+# PAGE HEADER: LOGO & TITLE
 # -------------------------------
-# This header (with the dynamic typed text) appears on all pages
 base64_image = get_base64_image("assets/app_icon.png")
+# Set header text based on current page and use a purple color (#800080)
+if page == "Pulse":
+    header_text = "Pulse"
+elif page == "Daily Journal":
+    header_text = "Daily Journal"
+else:
+    header_text = ""
+
 header_html = f"""
 <div style="display: flex; align-items: center; margin-bottom: 20px;">
     <img src="data:image/png;base64,{base64_image}" alt="App Icon" style="height: 100px; margin-right: 20px;">
-    <p id="typed"></p>
+    <h1 style="color: #800080; font-size: 32px;">{header_text}</h1>
 </div>
-<style>
-  /* Base styling for the typed text */
-  #typed {{
-      font-size: 24px;
-      margin: 0;
-      color: #0096FF;
-  }}
-</style>
-<script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
-<script>
-  var typed = new Typed('#typed', {{
-    strings: ["Remember why you started", "Embrace the journey", "Stay positive, {st.session_state.name}!"],
-    typeSpeed: 50,
-    backSpeed: 25,
-    backDelay: 2000,
-    loop: true
-  }});
-</script>
 """
 components.html(header_html, height=150)
 
@@ -385,9 +375,9 @@ for habit in st.session_state.data["habits"]:
     update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
 
 # =====================================================
-# PAGE: HABIT TRACKER & ANALYTICS
+# PAGE: PULSE (Main Habit Tracker & Analytics)
 # =====================================================
-if page == "Habit Tracker 📆":
+if page == "Pulse":
     st.markdown("### Weekly Habit Tracker")
     
     # -------------------------------
@@ -803,9 +793,9 @@ if page == "Habit Tracker 📆":
             st.plotly_chart(fig_heatmap, use_container_width=True)
 
 # =====================================================
-# PAGE: JOURNAL
+# PAGE: DAILY JOURNAL
 # =====================================================
-elif page == "Journal 🗒️":
+elif page == "Daily Journal":
     st.title("Daily Journal 📝")
     today = datetime.date.today()
     today_str = today.strftime("%Y-%m-%d")
