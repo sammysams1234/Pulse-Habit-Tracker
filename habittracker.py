@@ -20,7 +20,7 @@ import streamlit.components.v1 as components
 st.set_page_config(
     page_title="Pulse", 
     page_icon="assets/app_icon.png", 
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="collapsed"
 )
 
