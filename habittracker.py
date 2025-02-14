@@ -374,7 +374,7 @@ components.html(header_html, height=150)
 # PAGE: HABIT TRACKER & ANALYTICS
 # =====================================================
 if page == "Habit Tracker 📆":
-    st.title("Habit Tracker")
+    st.write("Weekly Habit Tracker")
     
     # -------------------------------
     # Manage Habits Section
