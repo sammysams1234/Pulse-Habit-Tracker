@@ -337,6 +337,7 @@ st.sidebar.write(f"Logged in as **{st.session_state.name}**")
 # -------------------------------
 # HEADER: LOGO & MOTIVATIONAL MESSAGES
 # -------------------------------
+# This header (with the dynamic typed text) appears on all pages
 base64_image = get_base64_image("assets/app_icon.png")
 header_html = f"""
 <div style="display: flex; align-items: center; margin-bottom: 20px;">
