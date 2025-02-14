@@ -17,7 +17,12 @@ import streamlit.components.v1 as components
 # -------------------------------
 # SET PAGE CONFIGURATION
 # -------------------------------
-st.set_page_config(page_title="Pulse", page_icon="assets/app_icon.png", layout="wide")
+st.set_page_config(
+    page_title="Pulse", 
+    page_icon="assets/app_icon.png", 
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
 # -------------------------------
 # INITIALIZE FIREBASE (if needed)
