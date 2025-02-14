@@ -349,18 +349,7 @@ header_html = f"""
   #typed {{
       font-size: 24px;
       margin: 0;
-  }}
-  /* When the user prefers dark mode */
-  @media (prefers-color-scheme: dark) {{
-      #typed {{
-          color: white;
-      }}
-  }}
-  /* When the user prefers light mode */
-  @media (prefers-color-scheme: light) {{
-      #typed {{
-          color: black;
-      }}
+      color: #5D3FD3;
   }}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
