@@ -904,5 +904,5 @@ with tab_journal:
                 st.markdown(f"**Cause:** {entry.get('cause', 'N/A')}")
                 summary_text = entry.get("summary")
                 if summary_text:
+                    st.markdown("#### <u>Summary</u>", unsafe_allow_html=True)
                     st.markdown(summary_text)
-                st.markdown("---")
