@@ -80,6 +80,18 @@ def get_base64_image(image_path):
         st.error(f"Error loading image at {image_path}: {e}")
         return ""
 
+# -------------------------------
+# HELPER: Build page header HTML
+# -------------------------------
+def build_header_html(title: str) -> str:
+    base64_img = get_base64_image("assets/app_icon.png")
+    return f"""
+    <div style="display: flex; align-items: center; margin-bottom: 20px;">
+        <img src="data:image/png;base64,{base64_img}" alt="App Icon" style="height: 100px; margin-right: 20px;">
+        <h1 style="color: #0096FF; font-size: 32px;">{title}</h1>
+    </div>
+    """
+
 # =====================================================
 # LOGIN & REGISTRATION (Always the FIRST screen)
 # =====================================================
@@ -158,8 +170,10 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                 if success:
                     st.session_state.logged_in = True
                     st.session_state.username = username
-                    st.session_state.name = display_name
-                    st.session_state.page = "Pulse"  # default page (retained for state consistency)
+                    # We'll keep the display name in session_state but won't show it on the header
+                    st.session_state.name = display_name  
+                    # Default page name in case we need it
+                    st.session_state.page = "Pulse"
                     st.success(f"Welcome, {display_name}!")
                 else:
                     st.error("Invalid username or password.")
@@ -330,28 +344,17 @@ for habit in st.session_state.data["habits"]:
     update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
 
 # =====================================================
-# TOP TABS NAVIGATION
+# CREATE TOP TABS
 # =====================================================
-tabs = st.tabs(["Pulse", "Analytics", "Journal"])
-
-# -------------------------------
-# PAGE HEADER: LOGO & TITLE (Common to All Tabs)
-# -------------------------------
-base64_image = get_base64_image("assets/app_icon.png")
-header_html = f"""
-<div style="display: flex; align-items: center; margin-bottom: 20px;">
-    <img src="data:image/png;base64,{base64_image}" alt="App Icon" style="height: 100px; margin-right: 20px;">
-    <h1 style="color: #0096FF; font-size: 32px;">Pulse</h1>
-    <h2 style="margin-left: 20px;">Logged in as <span style="color:#2E7D32;">{st.session_state.name}</span></h2>
-</div>
-"""
-components.html(header_html, height=150)
+tab_pulse, tab_analytics, tab_journal = st.tabs(["Pulse", "Analytics", "Journal"])
 
 # =====================================================
 # TAB: PULSE (Main Habit Tracker)
 # =====================================================
-with tabs[0]:
-    st.header("Pulse Weekly Habit Tracker")
+with tab_pulse:
+    # Header for this tab
+    components.html(build_header_html("Pulse Weekly Habit Tracker"), height=150)
+
     # -------------------------------
     # Manage Habits Section
     # -------------------------------
@@ -378,7 +381,7 @@ with tabs[0]:
                 current_goal = int(st.session_state.data["goals"].get(habit, 0))
                 col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
                 col1.markdown(f"**{habit}**")
-                new_goal_val = st.number_input("Goal", min_value=1, value=current_goal, key=f"edit_goal_{habit}")
+                new_goal_val = col2.number_input("Goal", min_value=1, value=current_goal, key=f"edit_goal_{habit}")
                 if col3.button("Update", key=f"update_goal_{habit}"):
                     st.session_state.data["goals"][habit] = int(new_goal_val)
                     save_user_data(user_id, st.session_state.data)
@@ -393,52 +396,53 @@ with tabs[0]:
         else:
             st.info("No habits available yet.")
 
-    if not st.session_state.data["habits"]:
-        st.info("No habit data available yet. Start tracking your habits by adding one above!")
-        st.stop()
-
     # -------------------------------
     # Habit Tracker Section (Weekly Editing)
     # -------------------------------
-    week_start = today - datetime.timedelta(days=today.weekday())
-    week_dates = [week_start + datetime.timedelta(days=i) for i in range(7)]
-    st.markdown('<div class="calendar-container">', unsafe_allow_html=True)
-    header_cols = st.columns(10)
-    header_cols[0].markdown("**Habit**")
-    for i, d in enumerate(week_dates):
-        header_cols[i+1].markdown(f"**{d.strftime('%a')}**")
-    header_cols[8].markdown("**Current Streak**")
-    header_cols[9].markdown("**Longest Streak**")
-    habits = list(st.session_state.data["habits"].keys())
-    for habit in habits:
-        row_cols = st.columns(10)
-        color = get_habit_color(habit)
-        row_cols[0].markdown(f"**<span style='color:{color}'>{habit}</span>**", unsafe_allow_html=True)
-        for i, current_date in enumerate(week_dates):
-            date_str = current_date.strftime("%Y-%m-%d")
-            outcome = st.session_state.data["habits"][habit].get(date_str, None)
-            label = "✅" if outcome == "succeeded" else "❌" if outcome == "failed" else str(current_date.day)
-            if row_cols[i+1].button(label, key=f"weekly_{habit}_{date_str}"):
-                current_outcome = st.session_state.data["habits"][habit].get(date_str, None)
-                new = "succeeded" if current_outcome is None else "failed" if current_outcome == "succeeded" else None
-                if new is None:
-                    st.session_state.data["habits"][habit].pop(date_str, None)
-                else:
-                    st.session_state.data["habits"][habit][date_str] = new
-                save_user_data(user_id, st.session_state.data)
-                update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
-        streak_data = st.session_state.data.get("streaks", {}).get(habit, {})
-        current_streak = streak_data.get("current", 0)
-        longest_streak = streak_data.get("longest", 0)
-        row_cols[8].markdown(f"**{current_streak}**")
-        row_cols[9].markdown(f"**{longest_streak}**")
-    st.markdown('</div>', unsafe_allow_html=True)
+    if st.session_state.data["habits"]:
+        week_start = today - datetime.timedelta(days=today.weekday())
+        week_dates = [week_start + datetime.timedelta(days=i) for i in range(7)]
+        st.markdown('<div class="calendar-container">', unsafe_allow_html=True)
+        header_cols = st.columns(10)
+        header_cols[0].markdown("**Habit**")
+        for i, d in enumerate(week_dates):
+            header_cols[i+1].markdown(f"**{d.strftime('%a')}**")
+        header_cols[8].markdown("**Current Streak**")
+        header_cols[9].markdown("**Longest Streak**")
+        
+        habits = list(st.session_state.data["habits"].keys())
+        for habit in habits:
+            row_cols = st.columns(10)
+            color = get_habit_color(habit)
+            row_cols[0].markdown(f"**<span style='color:{color}'>{habit}</span>**", unsafe_allow_html=True)
+            for i, current_date in enumerate(week_dates):
+                date_str = current_date.strftime("%Y-%m-%d")
+                outcome = st.session_state.data["habits"][habit].get(date_str, None)
+                label = "✅" if outcome == "succeeded" else "❌" if outcome == "failed" else str(current_date.day)
+                if row_cols[i+1].button(label, key=f"weekly_{habit}_{date_str}"):
+                    current_outcome = st.session_state.data["habits"][habit].get(date_str, None)
+                    new = "succeeded" if current_outcome is None else "failed" if current_outcome == "succeeded" else None
+                    if new is None:
+                        st.session_state.data["habits"][habit].pop(date_str, None)
+                    else:
+                        st.session_state.data["habits"][habit][date_str] = new
+                    save_user_data(user_id, st.session_state.data)
+                    update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
+            
+            # Display streaks
+            streak_data = st.session_state.data.get("streaks", {}).get(habit, {})
+            current_streak = streak_data.get("current", 0)
+            longest_streak = streak_data.get("longest", 0)
+            row_cols[8].markdown(f"**{current_streak}**")
+            row_cols[9].markdown(f"**{longest_streak}**")
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # =====================================================
 # TAB: ANALYTICS (Habit Tracking Analytics)
 # =====================================================
-with tabs[1]:
-    st.header("Pulse Analytics")
+with tab_analytics:
+    components.html(build_header_html("Pulse Analytics"), height=150)
+
     view_option = st.selectbox(
         "Filter analytics view:",
         ["Weekly", "Monthly", "Yearly"],
@@ -460,6 +464,10 @@ with tabs[1]:
         st.info("No habit tracking data available yet. Start tracking your habits by marking the calendar!")
     else:
         df = pd.DataFrame(records)
+
+        # -----------------------------
+        # WEEKLY VIEW
+        # -----------------------------
         if view_option == "Weekly":
             current_week_start = st.session_state.tracker_week
             current_week_end = current_week_start + datetime.timedelta(days=6)
@@ -472,23 +480,30 @@ with tabs[1]:
             with col_next:
                 if st.button("Next Week ▶", key="next_week"):
                     st.session_state.tracker_week += datetime.timedelta(days=7)
+
             last_week_start = current_week_start - datetime.timedelta(days=7)
             last_week_end = current_week_start - datetime.timedelta(days=1)
             mask_current = (df["date"].dt.date >= current_week_start) & (df["date"].dt.date <= current_week_end)
             mask_last = (df["date"].dt.date >= last_week_start) & (df["date"].dt.date <= last_week_end)
             df_current = df[mask_current]
             df_last = df[mask_last]
+
             current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
             last_summary = df_last.groupby("habit").size().reset_index(name="last_success_count")
+
+            # Ensure every habit is represented
             for habit in st.session_state.data["habits"].keys():
                 if habit not in current_summary["habit"].values:
                     current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
                 if habit not in last_summary["habit"].values:
                     last_summary = pd.concat([last_summary, pd.DataFrame([{"habit": habit, "last_success_count": 0}])], ignore_index=True)
+
             summary_compare = pd.merge(current_summary, last_summary, on="habit", how="outer").fillna(0)
             summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
             summary_compare["last_success_count"] = summary_compare["last_success_count"].astype(int)
-            summary_compare["goal"] = summary_compare["habit"].apply(lambda habit: int(st.session_state.data["goals"].get(habit, 0)))
+            summary_compare["goal"] = summary_compare["habit"].apply(lambda h: int(st.session_state.data["goals"].get(h, 0)))
+
+            # Show top metrics
             cols = st.columns(3)
             sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
             for idx, row in sorted_compare.iterrows():
@@ -499,6 +514,8 @@ with tabs[1]:
                 value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
                 col = cols[idx % 3]
                 col.metric(label=habit, value=value_str, delta=delta_str)
+
+            # Bar chart comparison
             melt_compare = summary_compare.melt(
                 id_vars="habit", 
                 value_vars=["current_success_count", "last_success_count", "goal"],
@@ -525,6 +542,7 @@ with tabs[1]:
             )
             st.plotly_chart(fig_compare, use_container_width=True)
                     
+            # Heatmap for the current week
             week_dates = [current_week_start + datetime.timedelta(days=i) for i in range(7)]
             heatmap_data_weekly = []
             text_data_weekly = []
@@ -547,6 +565,7 @@ with tabs[1]:
                     text_row.append(text)
                 heatmap_data_weekly.append(row)
                 text_data_weekly.append(text_row)
+
             fig_heatmap_weekly = go.Figure(data=go.Heatmap(
                 z=heatmap_data_weekly,
                 x=[day.strftime("%a") for day in week_dates],
@@ -560,15 +579,23 @@ with tabs[1]:
                 xgap=3,
                 ygap=3
             ))
-            fig_heatmap_weekly.update_layout(xaxis=dict(showgrid=False), yaxis=dict(showgrid=False), template="plotly_white")
+            fig_heatmap_weekly.update_layout(
+                xaxis=dict(showgrid=False), 
+                yaxis=dict(showgrid=False), 
+                template="plotly_white"
+            )
             st.plotly_chart(fig_heatmap_weekly, use_container_width=True)
-        
+
+        # -----------------------------
+        # MONTHLY VIEW
+        # -----------------------------
         elif view_option == "Monthly":
             current_month_start = st.session_state.tracker_month
             year = current_month_start.year
             month = current_month_start.month
             num_days = calendar.monthrange(year, month)[1]
             current_month_end = datetime.date(year, month, num_days)
+
             col_prev, col_center, col_next = st.columns([1, 2, 1])
             with col_prev:
                 if st.button("◀ Previous Month", key="prev_month"):
@@ -578,26 +605,38 @@ with tabs[1]:
             with col_next:
                 if st.button("Next Month ▶", key="next_month"):
                     st.session_state.tracker_month = shift_month(current_month_start, 1)
+
             prev_month_start = shift_month(current_month_start, -1)
             prev_year = prev_month_start.year
             prev_month = prev_month_start.month
             prev_num_days = calendar.monthrange(prev_year, prev_month)[1]
             prev_month_end = datetime.date(prev_year, prev_month, prev_num_days)
+
             mask_current = (df["date"].dt.date >= current_month_start) & (df["date"].dt.date <= current_month_end)
             mask_prev = (df["date"].dt.date >= prev_month_start) & (df["date"].dt.date <= prev_month_end)
             df_current = df[mask_current]
             df_prev = df[mask_prev]
+
             current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
             prev_summary = df_prev.groupby("habit").size().reset_index(name="prev_success_count")
+
+            # Ensure every habit is represented
             for habit in st.session_state.data["habits"].keys():
                 if habit not in current_summary["habit"].values:
                     current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
                 if habit not in prev_summary["habit"].values:
                     prev_summary = pd.concat([prev_summary, pd.DataFrame([{"habit": habit, "prev_success_count": 0}])], ignore_index=True)
+
             summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
             summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
             summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
-            summary_compare["goal"] = summary_compare["habit"].apply(lambda habit: int(st.session_state.data["goals"].get(habit, 0) / 7 * num_days))
+
+            # Approximate monthly goal by multiplying the weekly goal
+            summary_compare["goal"] = summary_compare["habit"].apply(
+                lambda h: int(st.session_state.data["goals"].get(h, 0) / 7 * num_days)
+            )
+
+            # Show top metrics
             cols = st.columns(3)
             sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
             for idx, row in sorted_compare.iterrows():
@@ -608,6 +647,8 @@ with tabs[1]:
                 value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
                 col = cols[idx % 3]
                 col.metric(label=habit, value=value_str, delta=delta_str)
+
+            # Bar chart comparison
             melt_compare = summary_compare.melt(
                 id_vars="habit", 
                 value_vars=["current_success_count", "prev_success_count", "goal"],
@@ -633,6 +674,8 @@ with tabs[1]:
                 template="plotly_white"
             )
             st.plotly_chart(fig_compare, use_container_width=True)
+
+            # Heatmap for the current month
             days = [datetime.date(year, month, d) for d in range(1, num_days+1)]
             heatmap_data = []
             text_data = []
@@ -655,6 +698,7 @@ with tabs[1]:
                     text_row.append(text)
                 heatmap_data.append(row)
                 text_data.append(text_row)
+
             fig_heatmap = go.Figure(data=go.Heatmap(
                 z=heatmap_data,
                 x=[str(day.day) for day in days],
@@ -668,12 +712,20 @@ with tabs[1]:
                 xgap=3,
                 ygap=3
             ))
-            fig_heatmap.update_layout(xaxis=dict(showgrid=False), yaxis=dict(showgrid=False), template="plotly_white")
+            fig_heatmap.update_layout(
+                xaxis=dict(showgrid=False), 
+                yaxis=dict(showgrid=False), 
+                template="plotly_white"
+            )
             st.plotly_chart(fig_heatmap, use_container_width=True)
-        
+
+        # -----------------------------
+        # YEARLY VIEW
+        # -----------------------------
         elif view_option == "Yearly":
             if "tracker_year" not in st.session_state:
                 st.session_state.tracker_year = today.year
+
             selected_year = st.session_state.tracker_year
             col_prev, col_center, col_next = st.columns([1, 2, 1])
             with col_prev:
@@ -684,22 +736,32 @@ with tabs[1]:
             with col_next:
                 if st.button("Next Year ▶", key="next_year"):
                     st.session_state.tracker_year += 1
+
             mask_current = (df["date"].dt.year == selected_year)
             mask_prev = (df["date"].dt.year == (selected_year - 1))
             df_current = df[mask_current]
             df_prev = df[mask_prev]
+
             current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
             prev_summary = df_prev.groupby("habit").size().reset_index(name="prev_success_count")
+
+            # Ensure every habit is represented
             for habit in st.session_state.data["habits"].keys():
                 if habit not in current_summary["habit"].values:
                     current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
                 if habit not in prev_summary["habit"].values:
                     prev_summary = pd.concat([prev_summary, pd.DataFrame([{"habit": habit, "prev_success_count": 0}])], ignore_index=True)
+
             summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
             summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
             summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
+
             days_in_year = 366 if calendar.isleap(selected_year) else 365
-            summary_compare["goal"] = summary_compare["habit"].apply(lambda habit: int(st.session_state.data["goals"].get(habit, 0) / 7 * days_in_year))
+            summary_compare["goal"] = summary_compare["habit"].apply(
+                lambda h: int(st.session_state.data["goals"].get(h, 0) / 7 * days_in_year)
+            )
+
+            # Show top metrics
             cols = st.columns(3)
             sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
             for idx, row in sorted_compare.iterrows():
@@ -710,6 +772,8 @@ with tabs[1]:
                 value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
                 col = cols[idx % 3]
                 col.metric(label=habit, value=value_str, delta=delta_str)
+
+            # Bar chart comparison
             melt_compare = summary_compare.melt(
                 id_vars="habit",
                 value_vars=["current_success_count", "prev_success_count", "goal"],
@@ -736,6 +800,7 @@ with tabs[1]:
             )
             st.plotly_chart(fig_compare, use_container_width=True)
             
+            # Heatmap by month
             months = list(range(1, 13))
             month_names = [calendar.month_abbr[m] for m in months]
             heatmap_data = []
@@ -744,36 +809,50 @@ with tabs[1]:
                 row = []
                 text_row = []
                 for m in months:
-                    count = df_current[(df_current["habit"]==habit) & (df_current["date"].dt.month == m)].shape[0]
+                    count = df_current[(df_current["habit"] == habit) & (df_current["date"].dt.month == m)].shape[0]
                     row.append(count)
                     text_row.append(f"{habit} in {calendar.month_abbr[m]} {selected_year}: {count} successes")
                 heatmap_data.append(row)
                 text_data.append(text_row)
+
             fig_heatmap = go.Figure(data=go.Heatmap(
                 z=heatmap_data,
                 x=month_names,
                 y=list(st.session_state.data["habits"].keys()),
                 text=text_data,
                 hoverinfo="text",
-                colorscale=[[0.0, "#eaeaea"], [0.25, "#c7e9c0"], [0.5, "#a1d99b"], [0.75, "#74c476"], [1.0, "#4BB543"]],
+                colorscale=[
+                    [0.0, "#eaeaea"], 
+                    [0.25, "#c7e9c0"], 
+                    [0.5, "#a1d99b"], 
+                    [0.75, "#74c476"], 
+                    [1.0, "#4BB543"]
+                ],
                 showscale=True,
                 xgap=3,
                 ygap=3
             ))
-            fig_heatmap.update_layout(xaxis=dict(showgrid=False), yaxis=dict(showgrid=False), template="plotly_white")
+            fig_heatmap.update_layout(
+                xaxis=dict(showgrid=False), 
+                yaxis=dict(showgrid=False), 
+                template="plotly_white"
+            )
             st.plotly_chart(fig_heatmap, use_container_width=True)
 
 # =====================================================
 # TAB: JOURNAL (Daily Journal)
 # =====================================================
-with tabs[2]:
-    st.header("Pulse Journal")
+with tab_journal:
+    components.html(build_header_html("Pulse Journal"), height=150)
+
     today = datetime.date.today()
     today_str = today.strftime("%Y-%m-%d")
     st.subheader(f"Journal Entry for {today_str}")
+
     existing_entry = get_journal_entry(today_str)
     default_feeling = existing_entry.get("feeling", "") if existing_entry else ""
     default_cause = existing_entry.get("cause", "") if existing_entry else ""
+
     with st.form("journal_entry_form"):
         st.write("Record your feelings and possible causes below:")
         feeling_input = st.text_area("How are you feeling today?", value=default_feeling, height=120)
@@ -789,6 +868,7 @@ with tabs[2]:
                 entry["summary"] = existing_entry["summary"]
             save_journal_entry(today_str, entry)
             st.success(f"Journal entry for {today_str} saved successfully!")
+
     st.markdown("---")
     st.subheader("Get Journal Summary")
     summary_period = st.radio("Select period to summarize", ["Daily", "Weekly", "Monthly"], index=0)
@@ -808,6 +888,7 @@ with tabs[2]:
                     daily_entry["summary"] = summary
                     save_journal_entry(today_str, daily_entry)
                     st.info("Daily summary has been saved to your journal entry.")
+
     with st.expander("Show Past Journal Entries"):
         all_entries = fetch_journal_entries()
         if not all_entries:
@@ -820,5 +901,5 @@ with tabs[2]:
                 st.markdown(f"**Cause:** {entry.get('cause', 'N/A')}")
                 summary_text = entry.get("summary")
                 if summary_text:
-                    st.markdown(f"{summary_text}")
+                    st.markdown(summary_text)
                 st.markdown("---")
