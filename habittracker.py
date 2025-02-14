@@ -86,9 +86,22 @@ def shift_month(date_obj, delta):
         year -= 1
     return datetime.date(year, month, 1)
 
+# --- Modified compute_current_streak Function ---
 def compute_current_streak(habit_data, today):
     streak = 0
-    d = today
+    today_str = today.strftime("%Y-%m-%d")
+    # If today's habit is unmarked, treat it as a success (Duolingo style)
+    if habit_data.get(today_str) is None:
+        streak += 1
+    else:
+        if habit_data.get(today_str) == "succeeded":
+            streak += 1
+        else:
+            # If today's entry exists and it's not a success, streak stops
+            return streak
+
+    # Now count backwards for previous days
+    d = today - datetime.timedelta(days=1)
     while True:
         d_str = d.strftime("%Y-%m-%d")
         if habit_data.get(d_str) == "succeeded":
