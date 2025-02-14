@@ -309,7 +309,7 @@ def get_summary_for_entries(entries_text, period):
         return ("OpenAI ChatCompletion is not available in your current openai library version. "
                 "Please run `openai migrate` to update your codebase or pin your openai version to <1.0.0.")
     try:
-        response = openai.Chat.completions.create(
+        response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a supportive and motivational journaling assistant."},
