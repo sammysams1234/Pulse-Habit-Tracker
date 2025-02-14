@@ -1,1 +1,0 @@
-web: streamlit run habittracker.py --server.port=$PORT --server.enableCORS false
