@@ -134,10 +134,29 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
             else:
                 return False, None
 
-    # --- UI: Choose to Login or Register ---
-    action = st.radio("", ["Login", "Register"])
+    # --- UI: Use Tabs for Login and Register ---
+    tab1, tab2 = st.tabs(["Login", "Register"])
 
-    if action == "Register":
+    with tab1:
+        st.subheader("Log In")
+        username = st.text_input("Username", key="login_username")
+        password = st.text_input("Password", type="password", key="login_password")
+        
+        if st.button("Login"):
+            if not username or not password:
+                st.error("Please enter both username and password.")
+            else:
+                success, display_name = login_user(username, password)
+                if success:
+                    st.session_state.logged_in = True
+                    st.session_state.username = username
+                    st.session_state.name = display_name  
+                    st.session_state.page = "Pulse"
+                    st.success(f"Welcome, {display_name}!")
+                else:
+                    st.error("Invalid username or password.")
+
+    with tab2:
         st.subheader("Create an Account")
         username = st.text_input("Username", key="reg_username")
         display_name = st.text_input("Display Name", key="reg_display_name")
@@ -153,32 +172,10 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                 hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
                 success = register_user(username, display_name, hashed_pw)
                 if success:
-                    st.success("Account created successfully! Please switch to the Login tab and log in.")
+                    st.success("Account created successfully! Please switch to the Login tab to log in.")
                 else:
                     st.error("Username already exists. Please choose another.")
-
-    if action == "Login":
-        st.subheader("Log In")
-        username = st.text_input("Username", key="login_username")
-        password = st.text_input("Password", type="password", key="login_password")
-        
-        if st.button("Login"):
-            if not username or not password:
-                st.error("Please enter both username and password.")
-            else:
-                success, display_name = login_user(username, password)
-                if success:
-                    st.session_state.logged_in = True
-                    st.session_state.username = username
-                    # We'll keep the display name in session_state but won't show it on the header
-                    st.session_state.name = display_name  
-                    # Default page name in case we need it
-                    st.session_state.page = "Pulse"
-                    st.success(f"Welcome, {display_name}!")
-                else:
-                    st.error("Invalid username or password.")
     st.stop()  # Stop execution until the user logs in.
-
 # =====================================================
 # HELPER FUNCTIONS FOR ENCRYPTED USER DATA
 # =====================================================
