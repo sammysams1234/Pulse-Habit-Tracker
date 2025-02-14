@@ -39,7 +39,7 @@ if not firebase_admin._apps:
 # ----------------------------------------------------
 st.set_page_config(
     page_title="Pulse",
-    page_icon="app_icon.png",
+    page_icon="assets/app_icon.png",
     layout="centered"
 )
 
