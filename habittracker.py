@@ -58,7 +58,6 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
             data["goals"] = {}
             data["habits"] = {}
             data["streaks"] = {}
-            # Also prepare journal container
             data["journal"] = {}
             ref.set(data)
             return True
@@ -112,7 +111,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                     st.session_state.logged_in = True
                     st.session_state.username = username
                     st.session_state.name = name
-                    # Set default page to Habit Tracker so that it mimics a sidebar click.
+                    # Set default page to Habit Tracker so it mimics a sidebar click.
                     st.session_state.page = "Habit Tracker 📆"
                     st.success(f"Welcome, {name}!")
                 else:
@@ -123,7 +122,6 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
 # HELPER FUNCTIONS COMMON TO HABIT TRACKER & JOURNAL
 # =====================================================
 
-# --- For Base64 image conversion ---
 def get_base64_image(image_path):
     try:
         with open(image_path, "rb") as img_file:
@@ -133,19 +131,12 @@ def get_base64_image(image_path):
         st.error(f"Error loading image at {image_path}: {e}")
         return ""
 
-# --- Dummy force rerun function (st.experimental_rerun is disabled) ---
-def force_rerun():
-    # This function is a placeholder.
-    pass
-
 # =====================================================
 # HABIT TRACKER FUNCTIONS & INITIALIZATION
 # =====================================================
 
-# Use the logged-in username as the unique user_id.
-user_id = st.session_state.username  # e.g., "sammysams1234"
+user_id = st.session_state.username
 
-# --- Data persistence helpers ---
 def load_user_data(user_id):
     ref = db.reference(f"users/{user_id}")
     data = ref.get() or {}
@@ -161,7 +152,6 @@ def load_user_data(user_id):
     if "journal" not in data or not isinstance(data["journal"], dict):
         data["journal"] = {}
         ref.child("journal").set(data["journal"])
-    # Optional migration logic (if needed)
     if "Sleeping before 12" in data["habits"]:
         data["habits"]["Sleep"] = data["habits"].pop("Sleeping before 12")
         ref.child("habits").set(data["habits"])
@@ -188,7 +178,6 @@ def shift_month(date_obj, delta):
 def compute_current_streak(habit_data, today):
     streak = 0
     d = today
-
     while True:
         d_str = d.strftime("%Y-%m-%d")
         if d == today:
@@ -197,8 +186,6 @@ def compute_current_streak(habit_data, today):
                     streak += 1
                 else:
                     break
-            else:
-                pass
         else:
             if d_str not in habit_data or habit_data[d_str] != "succeeded":
                 break
@@ -241,7 +228,6 @@ def update_streaks_for_habit(user_id, habit, habit_data, today):
     ref = db.reference(f"users/{user_id}/streaks/{habit}")
     ref.set(data_to_store)
 
-# Initialize session state for habit tracking if not already set
 if "data" not in st.session_state:
     st.session_state.data = load_user_data(user_id)
 if "tracker_month" not in st.session_state:
@@ -252,7 +238,6 @@ if "tracker_week" not in st.session_state:
     today = datetime.date.today()
     st.session_state.tracker_week = today - datetime.timedelta(days=today.weekday())
 
-# Update streaks for all habits
 today = datetime.date.today()
 today_str = today.strftime("%Y-%m-%d")
 for habit in st.session_state.data["habits"]:
@@ -263,19 +248,14 @@ for habit in st.session_state.data["habits"]:
 # =====================================================
 
 def get_journal_entry(user_id, date_str):
-    """Retrieve the journal entry for the given date from Firebase."""
     ref = db.reference(f"users/{user_id}/journal/{date_str}")
     return ref.get()
 
 def save_journal_entry(user_id, date_str, entry):
-    """Save the journal entry (a dict) to Firebase under the given date."""
     ref = db.reference(f"users/{user_id}/journal/{date_str}")
     ref.set(entry)
 
 def fetch_journal_entries(user_id):
-    """Fetch all journal entries for the user from Firebase.
-       Returns a dict with keys as date strings.
-    """
     ref = db.reference(f"users/{user_id}/journal")
     entries = ref.get()
     if not isinstance(entries, dict):
@@ -283,10 +263,6 @@ def fetch_journal_entries(user_id):
     return entries
 
 def filter_entries_by_period(entries, period, today):
-    """Filter entries by period.
-       - period: 'Daily', 'Weekly', or 'Monthly'
-       - today: a date object representing today.
-    """
     filtered = {}
     for date_str, entry in entries.items():
         try:
@@ -306,7 +282,6 @@ def filter_entries_by_period(entries, period, today):
     return filtered
 
 def build_entries_text(entries):
-    """Convert the entries dictionary into a combined text string for summarization."""
     texts = []
     for date_str in sorted(entries.keys()):
         entry = entries[date_str]
@@ -317,7 +292,6 @@ def build_entries_text(entries):
     return "\n".join(texts)
 
 def get_summary_for_entries(entries_text, period):
-    """Call the OpenAI API to generate a motivational summary from the journal entries."""
     if not entries_text.strip():
         return "No journal entries to summarize."
     prompt = (
@@ -345,13 +319,12 @@ def get_summary_for_entries(entries_text, period):
 # APP NAVIGATION (Sidebar)
 # =====================================================
 
-# If the user hasn't set a page yet, default to Habit Tracker.
 if "page" not in st.session_state:
     st.session_state.page = "Habit Tracker 📆"
 
 page_options = ["Habit Tracker 📆", "Journal 🗒️"]
 page = st.sidebar.radio("Navigation", page_options, index=page_options.index(st.session_state.page))
-st.session_state.page = page  # update current page in session state
+st.session_state.page = page
 st.sidebar.write(f"Logged in as **{st.session_state.name}**")
 
 # -------------------------------
@@ -381,6 +354,7 @@ components.html(header_html, height=150)
 # =====================================================
 if page == "Habit Tracker 📆":
     st.title("Habit Tracker")
+    
     # -------------------------------
     # Manage Habits Section
     # -------------------------------
@@ -400,7 +374,6 @@ if page == "Habit Tracker 📆":
                 update_streaks_for_habit(user_id, new_habit, st.session_state.data["habits"][new_habit], today)
                 save_user_data(user_id, st.session_state.data)
                 st.success(f"Habit '{new_habit}' added successfully!")
-                force_rerun()
 
         st.subheader("Manage Habits")
         if st.session_state.data["habits"]:
@@ -413,7 +386,6 @@ if page == "Habit Tracker 📆":
                     st.session_state.data["goals"][habit] = int(new_goal_val)
                     save_user_data(user_id, st.session_state.data)
                     st.success(f"Updated goal for '{habit}' to {new_goal_val}!")
-                    force_rerun()
                 if col4.button("Remove", key=f"remove_{habit}"):
                     st.session_state.data["habits"].pop(habit, None)
                     st.session_state.data["goals"].pop(habit, None)
@@ -421,7 +393,6 @@ if page == "Habit Tracker 📆":
                         st.session_state.data["streaks"].pop(habit, None)
                     save_user_data(user_id, st.session_state.data)
                     st.success(f"Habit '{habit}' removed successfully!")
-                    force_rerun()
         else:
             st.info("No habits available.")
 
@@ -430,7 +401,6 @@ if page == "Habit Tracker 📆":
     # -------------------------------
     week_start = today - datetime.timedelta(days=today.weekday())
     week_dates = [week_start + datetime.timedelta(days=i) for i in range(7)]
-
     st.markdown('<div class="calendar-container">', unsafe_allow_html=True)
     header_cols = st.columns(10)
     header_cols[0].markdown("**Habit**")
@@ -438,7 +408,6 @@ if page == "Habit Tracker 📆":
         header_cols[i+1].markdown(f"**{d.strftime('%a')}**")
     header_cols[8].markdown("**Current Streak**")
     header_cols[9].markdown("**Longest Streak**")
-
     habits = list(st.session_state.data["habits"].keys())
     for habit in habits:
         row_cols = st.columns(10)
@@ -447,20 +416,10 @@ if page == "Habit Tracker 📆":
         for i, current_date in enumerate(week_dates):
             date_str = current_date.strftime("%Y-%m-%d")
             outcome = st.session_state.data["habits"][habit].get(date_str, None)
-            if outcome == "succeeded":
-                label = "✅"
-            elif outcome == "failed":
-                label = "❌"
-            else:
-                label = str(current_date.day)
+            label = "✅" if outcome == "succeeded" else "❌" if outcome == "failed" else str(current_date.day)
             if row_cols[i+1].button(label, key=f"weekly_{habit}_{date_str}"):
                 current_outcome = st.session_state.data["habits"][habit].get(date_str, None)
-                if current_outcome is None:
-                    new = "succeeded"
-                elif current_outcome == "succeeded":
-                    new = "failed"
-                elif current_outcome == "failed":
-                    new = None
+                new = "succeeded" if current_outcome is None else "failed" if current_outcome == "succeeded" else None
                 if new is None:
                     st.session_state.data["habits"][habit].pop(date_str, None)
                 else:
@@ -478,6 +437,16 @@ if page == "Habit Tracker 📆":
     # Analytics Section
     # -------------------------------
     st.markdown("---")
+    # Container for the analytics filter dropdown:
+    with st.container():
+        st.markdown("### Analytics Filter")
+        view_option = st.selectbox(
+            "Filter analytics view:",
+            ["Weekly", "Monthly", "Yearly"],
+            index=["Weekly", "Monthly", "Yearly"].index(st.session_state.analytics_view)
+        )
+        st.session_state.analytics_view = view_option
+
     habit_colors = {habit: get_habit_color(habit) for habit in st.session_state.data["habits"].keys()}
     records = []
     for habit, days in st.session_state.data["habits"].items():
@@ -491,47 +460,32 @@ if page == "Habit Tracker 📆":
     if not records:
         st.info("No habit success data available yet. Start tracking your habits!")
     else:
-        view_option = st.selectbox(
-            "Select Analytics View",
-            ["Weekly", "Monthly", "Yearly"],
-            index=["Weekly", "Monthly", "Yearly"].index(st.session_state.analytics_view)
-        )
-        st.session_state.analytics_view = view_option
         df = pd.DataFrame(records)
-        
         if view_option == "Weekly":
             current_week_start = st.session_state.tracker_week
             current_week_end = current_week_start + datetime.timedelta(days=6)
-            col_prev, col_center, col_next = st.columns([1,2,1])
+            col_prev, col_center, col_next = st.columns([1, 2, 1])
             with col_prev:
                 if st.button("◀ Previous Week", key="prev_week"):
-                    st.session_state.tracker_week = st.session_state.tracker_week - datetime.timedelta(days=7)
-                    force_rerun()
+                    st.session_state.tracker_week -= datetime.timedelta(days=7)
             with col_center:
                 st.markdown(f"### Week of {current_week_start.strftime('%Y-%m-%d')}")
             with col_next:
                 if st.button("Next Week ▶", key="next_week"):
-                    st.session_state.tracker_week = st.session_state.tracker_week + datetime.timedelta(days=7)
-                    force_rerun()
-            
+                    st.session_state.tracker_week += datetime.timedelta(days=7)
             last_week_start = current_week_start - datetime.timedelta(days=7)
             last_week_end = current_week_start - datetime.timedelta(days=1)
             mask_current = (df["date"].dt.date >= current_week_start) & (df["date"].dt.date <= current_week_end)
             mask_last = (df["date"].dt.date >= last_week_start) & (df["date"].dt.date <= last_week_end)
             df_current = df[mask_current]
             df_last = df[mask_last]
-    
             current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
             last_summary = df_last.groupby("habit").size().reset_index(name="last_success_count")
             for habit in st.session_state.data["habits"].keys():
                 if habit not in current_summary["habit"].values:
-                    current_summary = pd.concat([current_summary,
-                                                 pd.DataFrame([{"habit": habit, "current_success_count": 0}])],
-                                                ignore_index=True)
+                    current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
                 if habit not in last_summary["habit"].values:
-                    last_summary = pd.concat([last_summary,
-                                              pd.DataFrame([{"habit": habit, "last_success_count": 0}])],
-                                             ignore_index=True)
+                    last_summary = pd.concat([last_summary, pd.DataFrame([{"habit": habit, "last_success_count": 0}])], ignore_index=True)
             summary_compare = pd.merge(current_summary, last_summary, on="habit", how="outer").fillna(0)
             summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
             summary_compare["last_success_count"] = summary_compare["last_success_count"].astype(int)
@@ -541,19 +495,11 @@ if page == "Habit Tracker 📆":
             for idx, row in sorted_compare.iterrows():
                 habit = row["habit"]
                 goal_val = row["goal"]
-                if row["last_success_count"] > 0:
-                    delta_value = row["current_success_count"] - row["last_success_count"]
-                    delta_str = f"{delta_value:+}"
-                else:
-                    delta_str = "N/A"
-                if goal_val > 0:
-                    current_pct = row["current_success_count"] / goal_val * 100
-                else:
-                    current_pct = 0
+                delta_str = f"{row['current_success_count'] - row['last_success_count']:+}" if row["last_success_count"] > 0 else "N/A"
+                current_pct = (row["current_success_count"] / goal_val * 100) if goal_val > 0 else 0
                 value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
                 col = cols[idx % 3]
                 col.metric(label=habit, value=value_str, delta=delta_str)
-    
             melt_compare = summary_compare.melt(
                 id_vars="habit", 
                 value_vars=["current_success_count", "last_success_count", "goal"],
@@ -602,55 +548,42 @@ if page == "Habit Tracker 📆":
                     text_row.append(text)
                 heatmap_data_weekly.append(row)
                 text_data_weekly.append(text_row)
-            colorscale_weekly = [
-                [0.0, "#eaeaea"],
-                [0.5, "rgba(0,0,0,0)"],
-                [1.0, "#4BB543"]
-            ]
             fig_heatmap_weekly = go.Figure(data=go.Heatmap(
                 z=heatmap_data_weekly,
                 x=[day.strftime("%a") for day in week_dates],
                 y=list(st.session_state.data["habits"].keys()),
                 text=text_data_weekly,
                 hoverinfo="text",
-                colorscale=colorscale_weekly,
+                colorscale=[[0.0, "#eaeaea"], [0.5, "rgba(0,0,0,0)"], [1.0, "#4BB543"]],
                 zmin=0,
                 zmax=2,
                 showscale=False,
                 xgap=3,
                 ygap=3
             ))
-            fig_heatmap_weekly.update_layout(
-                xaxis=dict(showgrid=False),
-                yaxis=dict(showgrid=False),
-                template="plotly_white",
-            )
+            fig_heatmap_weekly.update_layout(xaxis=dict(showgrid=False), yaxis=dict(showgrid=False), template="plotly_white")
             st.plotly_chart(fig_heatmap_weekly, use_container_width=True)
-                    
+        
         elif view_option == "Monthly":
             current_month_start = st.session_state.tracker_month
             year = current_month_start.year
             month = current_month_start.month
             num_days = calendar.monthrange(year, month)[1]
             current_month_end = datetime.date(year, month, num_days)
-            col_prev, col_center, col_next = st.columns([1,2,1])
+            col_prev, col_center, col_next = st.columns([1, 2, 1])
             with col_prev:
                 if st.button("◀ Previous Month", key="prev_month"):
                     st.session_state.tracker_month = shift_month(current_month_start, -1)
-                    force_rerun()
             with col_center:
                 st.markdown(f"### {current_month_start.strftime('%B %Y')}")
             with col_next:
                 if st.button("Next Month ▶", key="next_month"):
                     st.session_state.tracker_month = shift_month(current_month_start, 1)
-                    force_rerun()
-            
             prev_month_start = shift_month(current_month_start, -1)
             prev_year = prev_month_start.year
             prev_month = prev_month_start.month
             prev_num_days = calendar.monthrange(prev_year, prev_month)[1]
             prev_month_end = datetime.date(prev_year, prev_month, prev_num_days)
-            
             mask_current = (df["date"].dt.date >= current_month_start) & (df["date"].dt.date <= current_month_end)
             mask_prev = (df["date"].dt.date >= prev_month_start) & (df["date"].dt.date <= prev_month_end)
             df_current = df[mask_current]
@@ -665,23 +598,14 @@ if page == "Habit Tracker 📆":
             summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
             summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
             summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
-            summary_compare["goal"] = summary_compare["habit"].apply(
-                lambda habit: int(st.session_state.data["goals"].get(habit, 0) / 7 * num_days)
-            )
+            summary_compare["goal"] = summary_compare["habit"].apply(lambda habit: int(st.session_state.data["goals"].get(habit, 0) / 7 * num_days))
             cols = st.columns(3)
             sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
             for idx, row in sorted_compare.iterrows():
                 habit = row["habit"]
                 goal_val = row["goal"]
-                if row["prev_success_count"] > 0:
-                    delta_value = row["current_success_count"] - row["prev_success_count"]
-                    delta_str = f"{delta_value:+}"
-                else:
-                    delta_str = "N/A"
-                if goal_val > 0:
-                    current_pct = row["current_success_count"] / goal_val * 100
-                else:
-                    current_pct = 0
+                delta_str = f"{row['current_success_count'] - row['prev_success_count']:+}" if row["prev_success_count"] > 0 else "N/A"
+                current_pct = (row["current_success_count"] / goal_val * 100) if goal_val > 0 else 0
                 value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
                 col = cols[idx % 3]
                 col.metric(label=habit, value=value_str, delta=delta_str)
@@ -710,7 +634,6 @@ if page == "Habit Tracker 📆":
                 template="plotly_white"
             )
             st.plotly_chart(fig_compare, use_container_width=True)
-            
             days = [datetime.date(year, month, d) for d in range(1, num_days+1)]
             heatmap_data = []
             text_data = []
@@ -733,47 +656,35 @@ if page == "Habit Tracker 📆":
                     text_row.append(text)
                 heatmap_data.append(row)
                 text_data.append(text_row)
-            colorscale_monthly = [
-                [0.0, "#eaeaea"],
-                [0.5, "rgba(0,0,0,0)"],
-                [1.0, "#4BB543"]
-            ]
             fig_heatmap = go.Figure(data=go.Heatmap(
                 z=heatmap_data,
                 x=[str(day.day) for day in days],
                 y=list(st.session_state.data["habits"].keys()),
                 text=text_data,
                 hoverinfo="text",
-                colorscale=colorscale_monthly,
+                colorscale=[[0.0, "#eaeaea"], [0.5, "rgba(0,0,0,0)"], [1.0, "#4BB543"]],
                 zmin=0,
                 zmax=2,
                 showscale=False,
                 xgap=3,
                 ygap=3
             ))
-            fig_heatmap.update_layout(
-                xaxis=dict(showgrid=False),
-                yaxis=dict(showgrid=False),
-                template="plotly_white",
-            )
+            fig_heatmap.update_layout(xaxis=dict(showgrid=False), yaxis=dict(showgrid=False), template="plotly_white")
             st.plotly_chart(fig_heatmap, use_container_width=True)
-                    
+        
         elif view_option == "Yearly":
             if "tracker_year" not in st.session_state:
                 st.session_state.tracker_year = today.year
             selected_year = st.session_state.tracker_year
-            col_prev, col_center, col_next = st.columns([1,2,1])
+            col_prev, col_center, col_next = st.columns([1, 2, 1])
             with col_prev:
                 if st.button("◀ Previous Year", key="prev_year"):
-                    st.session_state.tracker_year = st.session_state.tracker_year - 1
-                    force_rerun()
+                    st.session_state.tracker_year -= 1
             with col_center:
                 st.markdown(f"### {selected_year}")
             with col_next:
                 if st.button("Next Year ▶", key="next_year"):
-                    st.session_state.tracker_year = st.session_state.tracker_year + 1
-                    force_rerun()
-            
+                    st.session_state.tracker_year += 1
             mask_current = (df["date"].dt.year == selected_year)
             mask_prev = (df["date"].dt.year == (selected_year - 1))
             df_current = df[mask_current]
@@ -789,23 +700,14 @@ if page == "Habit Tracker 📆":
             summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
             summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
             days_in_year = 366 if calendar.isleap(selected_year) else 365
-            summary_compare["goal"] = summary_compare["habit"].apply(
-                lambda habit: int(st.session_state.data["goals"].get(habit, 0) / 7 * days_in_year)
-            )
+            summary_compare["goal"] = summary_compare["habit"].apply(lambda habit: int(st.session_state.data["goals"].get(habit, 0) / 7 * days_in_year))
             cols = st.columns(3)
             sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
             for idx, row in sorted_compare.iterrows():
                 habit = row["habit"]
                 goal_val = row["goal"]
-                if row["prev_success_count"] > 0:
-                    delta_value = row["current_success_count"] - row["prev_success_count"]
-                    delta_str = f"{delta_value:+}"
-                else:
-                    delta_str = "N/A"
-                if goal_val > 0:
-                    current_pct = row["current_success_count"] / goal_val * 100
-                else:
-                    current_pct = 0
+                delta_str = f"{row['current_success_count'] - row['prev_success_count']:+}" if row["prev_success_count"] > 0 else "N/A"
+                current_pct = (row["current_success_count"] / goal_val * 100) if goal_val > 0 else 0
                 value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
                 col = cols[idx % 3]
                 col.metric(label=habit, value=value_str, delta=delta_str)
@@ -848,29 +750,18 @@ if page == "Habit Tracker 📆":
                     text_row.append(f"{habit} in {calendar.month_abbr[m]} {selected_year}: {count} successes")
                 heatmap_data.append(row)
                 text_data.append(text_row)
-            colorscale_yearly = [
-                [0.0, "#eaeaea"],
-                [0.25, "#c7e9c0"],
-                [0.5, "#a1d99b"],
-                [0.75, "#74c476"],
-                [1.0, "#4BB543"]
-            ]
             fig_heatmap = go.Figure(data=go.Heatmap(
                 z=heatmap_data,
                 x=month_names,
                 y=list(st.session_state.data["habits"].keys()),
                 text=text_data,
                 hoverinfo="text",
-                colorscale=colorscale_yearly,
+                colorscale=[[0.0, "#eaeaea"], [0.25, "#c7e9c0"], [0.5, "#a1d99b"], [0.75, "#74c476"], [1.0, "#4BB543"]],
                 showscale=True,
                 xgap=3,
                 ygap=3
             ))
-            fig_heatmap.update_layout(
-                xaxis=dict(showgrid=False),
-                yaxis=dict(showgrid=False),
-                template="plotly_white",
-            )
+            fig_heatmap.update_layout(xaxis=dict(showgrid=False), yaxis=dict(showgrid=False), template="plotly_white")
             st.plotly_chart(fig_heatmap, use_container_width=True)
 
 # =====================================================
@@ -881,12 +772,9 @@ elif page == "Journal 🗒️":
     today = datetime.date.today()
     today_str = today.strftime("%Y-%m-%d")
     st.subheader(f"Journal Entry for {today_str}")
-
-    # Load existing journal entry if it exists.
     existing_entry = get_journal_entry(user_id, today_str)
     default_feeling = existing_entry.get("feeling", "") if existing_entry else ""
     default_cause = existing_entry.get("cause", "") if existing_entry else ""
-
     with st.form("journal_entry_form"):
         st.write("Record your feelings and possible causes below:")
         feeling_input = st.text_area("How are you feeling today?", value=default_feeling, height=120)
@@ -902,7 +790,6 @@ elif page == "Journal 🗒️":
                 entry["summary"] = existing_entry["summary"]
             save_journal_entry(user_id, today_str, entry)
             st.success(f"Journal entry for {today_str} saved successfully!")
-
     st.markdown("---")
     st.header("Get Journal Summary")
     summary_period = st.radio("Select period to summarize", ["Daily", "Weekly", "Monthly"], index=0)
@@ -922,7 +809,6 @@ elif page == "Journal 🗒️":
                     daily_entry["summary"] = summary
                     save_journal_entry(user_id, today_str, daily_entry)
                     st.info("Daily summary has been saved to your journal entry.")
-
     with st.expander("Show Past Journal Entries"):
         all_entries = fetch_journal_entries(user_id)
         if not all_entries:
