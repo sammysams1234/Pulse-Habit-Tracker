@@ -43,7 +43,6 @@ st.set_page_config(
     layout="centered"
 )
 
-st.markdown('<link rel="manifest" href="site.webmanifest">', unsafe_allow_html=True)
 st.markdown(
     """
     <style>
