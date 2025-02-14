@@ -64,7 +64,7 @@ action = st.radio("Select Action", ["Login", "Register"])
 
 if action == "Register":
     st.subheader("Create an Account")
-    # Default to the desired username "sammysams1234"
+    # Default to our desired user ("sammysams1234")
     username = st.text_input("Username", key="reg_username", value="sammysams1234")
     name = st.text_input("Name", key="reg_name", value="Samuel")
     password = st.text_input("Password", type="password", key="reg_password")
