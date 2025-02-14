@@ -113,7 +113,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                     st.session_state.username = username
                     st.session_state.name = name
                     # Set default page to Habit Tracker so that it mimics a sidebar click.
-                    st.session_state.page = "Habit Tracker"
+                    st.session_state.page = "Habit Tracker 📆"
                     st.success(f"Welcome, {name}!")
                 else:
                     st.error("Invalid username or password.")
@@ -347,7 +347,7 @@ def get_summary_for_entries(entries_text, period):
 
 # If the user hasn't set a page yet, default to Habit Tracker.
 if "page" not in st.session_state:
-    st.session_state.page = "Habit Tracker"
+    st.session_state.page = "Habit Tracker 📆"
 
 page_options = ["Habit Tracker 📆", "Journal 🗒️"]
 page = st.sidebar.radio("Navigation", page_options, index=page_options.index(st.session_state.page))
@@ -379,7 +379,7 @@ components.html(header_html, height=150)
 # =====================================================
 # PAGE: HABIT TRACKER & ANALYTICS
 # =====================================================
-if page == "Habit Tracker":
+if page == "Habit Tracker 📆":
     st.title("Habit Tracker")
     # -------------------------------
     # Manage Habits Section
@@ -876,7 +876,7 @@ if page == "Habit Tracker":
 # =====================================================
 # PAGE: JOURNAL
 # =====================================================
-elif page == "Journal":
+elif page == "Journal 🗒️":
     st.title("Daily Journal 📝")
     today = datetime.date.today()
     today_str = today.strftime("%Y-%m-%d")
