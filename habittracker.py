@@ -100,7 +100,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     header_html = f"""
     <div style="display: flex; align-items: center; margin-bottom: 20px;">
         <img src="data:image/png;base64,{base64_image}" alt="App Icon" style="height: 100px; margin-right: 20px;">
-        <h1 style="color: #0096FF; font-size: 32px;">Welcome to Pulse Habit Tracking! Please Login or Create an Account</h1>
+        <h1 style="color: #0096FF; font-size: 32px;">Welcome to Pulse Habit Tracking!</h1>
     </div>
     """
     st.markdown(header_html, unsafe_allow_html=True)
@@ -134,10 +134,10 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
             else:
                 return False, None
 
-    # --- UI: Choose to Login or Register ---
-    action = st.radio("", ["Login", "Register"])
+    # --- Create Tabs for Login and Registration ---
+    tab_login, tab_register = st.tabs(["Login", "Register"])
 
-    if action == "Register":
+    with tab_register:
         st.subheader("Create an Account")
         username = st.text_input("Username", key="reg_username")
         display_name = st.text_input("Display Name", key="reg_display_name")
@@ -153,11 +153,11 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                 hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
                 success = register_user(username, display_name, hashed_pw)
                 if success:
-                    st.success("Account created successfully! Please switch to the Login tab and log in.")
+                    st.success("Account created successfully! Please switch to the Login tab to log in.")
                 else:
                     st.error("Username already exists. Please choose another.")
 
-    if action == "Login":
+    with tab_login:
         st.subheader("Log In")
         username = st.text_input("Username", key="login_username")
         password = st.text_input("Password", type="password", key="login_password")
