@@ -374,7 +374,7 @@ components.html(header_html, height=150)
 # PAGE: HABIT TRACKER & ANALYTICS
 # =====================================================
 if page == "Habit Tracker 📆":
-    st.markdown("### Weekly Habit Tracker")
+    st.markdown("### {st.session_state.name}'s Weekly Habit Tracker")
     
     # -------------------------------
     # Manage Habits Section
@@ -466,7 +466,7 @@ if page == "Habit Tracker 📆":
     st.markdown("---")
     # Container for the analytics filter dropdown:
     with st.container():
-        st.markdown("### Analytics")
+        st.markdown("### {st.session_state.name}'s Analytics")
         view_option = st.selectbox(
             "Filter analytics view:",
             ["Weekly", "Monthly", "Yearly"],
