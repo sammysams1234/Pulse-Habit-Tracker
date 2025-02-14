@@ -41,9 +41,6 @@ openai.api_key = os.environ.get("OPENAI_API_KEY")
 if openai.api_key is None:
     st.warning("OpenAI API key is not set in the environment. Journal summarization will not work.")
 
-# -------------------------------
-# HELPER: Base64 Image Conversion
-# -------------------------------
 def get_base64_image(image_path):
     try:
         with open(image_path, "rb") as img_file:
@@ -57,7 +54,6 @@ def get_base64_image(image_path):
 # LOGIN & REGISTRATION (Always the FIRST screen)
 # =====================================================
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    # Display header with icon and title (text in white)
     base64_image = get_base64_image("assets/app_icon.png")
     header_html = f"""
     <div style="display: flex; align-items: center; margin-bottom: 20px;">
@@ -66,7 +62,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     </div>
     """
     st.markdown(header_html, unsafe_allow_html=True)
-    
+
     # --- Helper Functions for Firebase User Management ---
     def register_user(username, name, hashed_pw):
         ref = db.reference("users/" + username)
@@ -94,13 +90,9 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
             else:
                 return False, None
 
-    # Use session state to store the current action; default to "Login"
-    if "action" not in st.session_state:
-        st.session_state.action = "Login"
-    
-    # --- UI: Radio buttons without label ---
-    action = st.radio("", ["Login", "Register"], index=0 if st.session_state.action == "Login" else 1)
-    
+    # --- UI: Choose to Login or Register ---
+    action = st.radio("", ["Login", "Register"])
+
     if action == "Register":
         st.subheader("Create an Account")
         username = st.text_input("Username", key="reg_username")
@@ -117,9 +109,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                 hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
                 success = register_user(username, name, hashed_pw)
                 if success:
-                    st.success("Account created successfully! Redirecting you to the Login page...")
-                    st.session_state.action = "Login"  # Switch to the login view
-                    # (Note: If the UI does not update immediately, please click the Login radio button.)
+                    st.success("Account created successfully! Please switch to the Login tab and log in.")
                 else:
                     st.error("Username already exists. Please choose another.")
 
@@ -137,7 +127,8 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                     st.session_state.logged_in = True
                     st.session_state.username = username
                     st.session_state.name = name
-                    st.session_state.page = "Habit Tracker 📆"  # Set default page after login
+                    # Set default page to Habit Tracker so it mimics a sidebar click.
+                    st.session_state.page = "Habit Tracker 📆"
                     st.success(f"Welcome, {name}!")
                 else:
                     st.error("Invalid username or password.")
@@ -146,6 +137,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
 # =====================================================
 # HELPER FUNCTIONS COMMON TO HABIT TRACKER & JOURNAL
 # =====================================================
+
 def get_base64_image(image_path):
     try:
         with open(image_path, "rb") as img_file:
@@ -158,6 +150,7 @@ def get_base64_image(image_path):
 # =====================================================
 # HABIT TRACKER FUNCTIONS & INITIALIZATION
 # =====================================================
+
 user_id = st.session_state.username
 
 def load_user_data(user_id):
@@ -269,6 +262,7 @@ for habit in st.session_state.data["habits"]:
 # =====================================================
 # JOURNAL FUNCTIONS
 # =====================================================
+
 def get_journal_entry(user_id, date_str):
     ref = db.reference(f"users/{user_id}/journal/{date_str}")
     return ref.get()
@@ -340,6 +334,7 @@ def get_summary_for_entries(entries_text, period):
 # =====================================================
 # APP NAVIGATION (Sidebar)
 # =====================================================
+
 if "page" not in st.session_state:
     st.session_state.page = "Habit Tracker 📆"
 
@@ -458,6 +453,7 @@ if page == "Habit Tracker 📆":
     # Analytics Section
     # -------------------------------
     st.markdown("---")
+    # Container for the analytics filter dropdown:
     with st.container():
         st.markdown("### Analytics Filter")
         view_option = st.selectbox(
