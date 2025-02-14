@@ -375,7 +375,7 @@ if page == "Habit Tracker 📆":
     # Manage Habits Section
     # -------------------------------
     # Expand the habit manager if no habits exist.
-    with st.expander("Manage Habits", expanded=(not st.session_state.data["habits"])):
+    with st.expander("Manage Habits", expanded=False):
         st.subheader("Add Habit")
         new_habit = st.text_input("Habit", key="new_habit_input")
         new_goal = st.number_input("Set Goal", min_value=1, value=1, key="new_goal_input")
