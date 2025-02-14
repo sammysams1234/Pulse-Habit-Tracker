@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit_authenticator as stauth
 import datetime
 import os
 import calendar
@@ -9,17 +10,51 @@ import json
 import hashlib
 import base64
 
-# ----------------------------------
-# Helper function to get Base64 image
-# ----------------------------------
+# ------------------------------------------------
+# USER AUTHENTICATION (using streamlit-authenticator)
+# ------------------------------------------------
+# Preconfigured user details (for demo purposes)
+names = ["Alice Example", "Bob Example"]
+usernames = ["alice", "bob"]
+passwords = ["password123", "mypassword"]  # Demo plain-text passwords
+hashed_passwords = stauth.Hasher(passwords).generate()
+
+credentials = {
+    "usernames": {
+        usernames[i]: {"name": names[i], "password": hashed_passwords[i]}
+        for i in range(len(usernames))
+    }
+}
+
+authenticator = stauth.Authenticate(
+    credentials,
+    "some_cookie_key",        # Replace with your own secret key
+    cookie_expiry_days=30
+)
+
+name, authentication_status, username = authenticator.login("Login", "main")
+
+if authentication_status:
+    st.success(f"Welcome, {name}!")
+    user_id = username  # Use the username as the unique user ID
+elif authentication_status is False:
+    st.error("Username/password is incorrect")
+    st.stop()  # Stop app if login fails
+elif authentication_status is None:
+    st.warning("Please enter your username and password")
+    st.stop()
+
+# ------------------------------------------------
+# HELPER FUNCTION TO GET BASE64 IMAGE
+# ------------------------------------------------
 def get_base64_image(image_path):
     with open(image_path, "rb") as img_file:
         encoded = base64.b64encode(img_file.read()).decode()
     return encoded
 
-# -------------------------------
-# Firebase Admin Imports & Setup
-# -------------------------------
+# ------------------------------------------------
+# FIREBASE ADMIN IMPORTS & INITIALIZATION
+# ------------------------------------------------
 import firebase_admin
 from firebase_admin import credentials, db
 
@@ -42,9 +77,9 @@ if not firebase_admin._apps:
     else:
         st.error("FIREBASE_CREDENTIALS environment variable not set!")
 
-# ----------------------------------------------------
+# ------------------------------------------------
 # PAGE CONFIGURATION & CUSTOM CSS
-# ----------------------------------------------------
+# ------------------------------------------------
 st.set_page_config(
     page_title="Pulse",
     page_icon="assets/app_icon.png",
@@ -73,15 +108,13 @@ st.markdown(
     """, unsafe_allow_html=True,
 )
 
-# ----------------------------------------------------
+# ------------------------------------------------
 # CONFIGURATION & DATA PERSISTENCE (User-Specific Data)
-# ----------------------------------------------------
+# ------------------------------------------------
 OUTCOME_COLORS = {
     "succeeded": "#4BB543",
     "failed": "transparent"
 }
-
-# Define a single success green tone for all heatmaps
 success_green = "#4BB543"
 
 def load_user_data(user_id):
@@ -95,7 +128,6 @@ def load_user_data(user_id):
     if "goals" not in data or not isinstance(data["goals"], dict):
         data["goals"] = {}
         ref.child("goals").set(data["goals"])
-    # Initialize streaks if not present:
     if "streaks" not in data or not isinstance(data["streaks"], dict):
         data["streaks"] = {}
         ref.child("streaks").set(data["streaks"])
@@ -112,9 +144,9 @@ def save_user_data(user_id, data):
     if "streaks" in data:
         ref.child("streaks").set(data["streaks"])
 
-# ----------------------------------------------------
+# ------------------------------------------------
 # UTILITY FUNCTIONS
-# ----------------------------------------------------
+# ------------------------------------------------
 def shift_month(date_obj, delta):
     year = date_obj.year
     month = date_obj.month + delta
@@ -163,7 +195,6 @@ def get_habit_color(habit):
     color = '#' + h[:6]
     return color
 
-# Helper function to update streaks for a habit
 def update_streaks_for_habit(user_id, habit, habit_data, today):
     current_streak = compute_current_streak(habit_data, today)
     longest_streak = compute_longest_streak(habit_data, today)
@@ -176,21 +207,16 @@ def update_streaks_for_habit(user_id, habit, habit_data, today):
     if "streaks" not in st.session_state.data:
         st.session_state.data["streaks"] = {}
     st.session_state.data["streaks"][habit] = data_to_store
-    # Save to Firebase:
     ref = db.reference(f"users/{user_id}/streaks/{habit}")
     ref.set(data_to_store)
 
-# ------------------------------------------
-# Custom rerun function
-# ------------------------------------------
 def force_rerun():
     if hasattr(st, "experimental_rerun"):
         st.experimental_rerun()
 
-# ----------------------------------------------------
+# ------------------------------------------------
 # INITIALIZE SESSION STATE
-# ----------------------------------------------------
-user_id = "default_user"
+# ------------------------------------------------
 if "data" not in st.session_state:
     st.session_state.data = load_user_data(user_id)
 if "tracker_month" not in st.session_state:
@@ -198,26 +224,25 @@ if "tracker_month" not in st.session_state:
 if "analytics_view" not in st.session_state:
     st.session_state.analytics_view = "Weekly"
 if "tracker_week" not in st.session_state:
-    # Initialize week tracker to current week (Monday)
     today = datetime.date.today()
     st.session_state.tracker_week = today - datetime.timedelta(days=today.weekday())
 
-# ----------------------------------------------------
-# Update streaks for each habit on every load
-# ----------------------------------------------------
+# ------------------------------------------------
+# UPDATE STREAKS FOR EACH HABIT
+# ------------------------------------------------
 today = datetime.date.today()
 today_str = today.strftime("%Y-%m-%d")
 for habit in st.session_state.data["habits"]:
     update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
 
-# ----------------------------------------------------
-# PAGE HEADER: Robot Logo & Animated Typed Messages
-# ----------------------------------------------------
+# ------------------------------------------------
+# PAGE HEADER: Logo & Animated Messages
+# ------------------------------------------------
 base64_image = get_base64_image("assets/app_icon.png")
 import streamlit.components.v1 as components
 header_html = f"""
 <div style="display: flex; align-items: center; margin-bottom: 20px;">
-    <img src="data:image/png;base64,{base64_image}" alt="Robot Logo" style="height: 100px; margin-right: 20px;">
+    <img src="data:image/png;base64,{base64_image}" alt="App Icon" style="height: 100px; margin-right: 20px;">
     <p id="typed" style="font-size: 24px; margin: 0; color: white;"></p>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
@@ -233,9 +258,9 @@ header_html = f"""
 """
 components.html(header_html, height=150)
 
-###########################################
-# Manage Habits Section (Add, Edit Goal & Remove)
-###########################################
+# ------------------------------------------------
+# MANAGE HABITS SECTION (Add, Edit Goal & Remove)
+# ------------------------------------------------
 with st.expander("Manage Habits", expanded=False):
     st.subheader("Add Habit")
     new_habit = st.text_input("Habit", key="new_habit_input")
@@ -248,9 +273,7 @@ with st.expander("Manage Habits", expanded=False):
             st.error("This habit already exists!")
         else:
             st.session_state.data["habits"][new_habit] = {}
-            # Convert goal to integer in case it's not already
             st.session_state.data["goals"][new_habit] = int(float(new_goal))
-            # Initialize streaks for new habit
             update_streaks_for_habit(user_id, new_habit, st.session_state.data["habits"][new_habit], today)
             save_user_data(user_id, st.session_state.data)
             st.success(f"Habit '{new_habit}' added successfully!")
@@ -279,9 +302,9 @@ with st.expander("Manage Habits", expanded=False):
     else:
         st.info("No habits available.")
 
-#############################
-# Habit Tracker Section (Weekly Editing)
-#############################
+# ------------------------------------------------
+# HABIT TRACKER SECTION (Weekly Editing)
+# ------------------------------------------------
 week_start = today - datetime.timedelta(days=today.weekday())
 week_dates = [week_start + datetime.timedelta(days=i) for i in range(7)]
 
@@ -329,11 +352,10 @@ for habit in habits:
     row_cols[9].markdown(f"**{longest_streak}**")
 st.markdown('</div>', unsafe_allow_html=True)
 
-#############################
-# Analytics Section
-#############################
+# ------------------------------------------------
+# ANALYTICS SECTION
+# ------------------------------------------------
 st.markdown("---")
-
 # Build a DataFrame of successful habit records
 habit_colors = {habit: get_habit_color(habit) for habit in st.session_state.data["habits"].keys()}
 records = []
@@ -394,7 +416,6 @@ else:
         summary_compare = pd.merge(current_summary, last_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["last_success_count"] = summary_compare["last_success_count"].astype(int)
-        # For weekly view, convert the stored goal to integer
         summary_compare["goal"] = summary_compare["habit"].apply(lambda habit: int(float(st.session_state.data["goals"].get(habit, 0))))
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
@@ -507,14 +528,12 @@ else:
                 st.session_state.tracker_month = shift_month(current_month_start, 1)
                 force_rerun()
         
-        # Determine previous month for comparison
         prev_month_start = shift_month(current_month_start, -1)
         prev_year = prev_month_start.year
         prev_month = prev_month_start.month
         prev_num_days = calendar.monthrange(prev_year, prev_month)[1]
         prev_month_end = datetime.date(prev_year, prev_month, prev_num_days)
         
-        # Filter data for current month and previous month
         mask_current = (df["date"].dt.date >= current_month_start) & (df["date"].dt.date <= current_month_end)
         mask_prev = (df["date"].dt.date >= prev_month_start) & (df["date"].dt.date <= prev_month_end)
         df_current = df[mask_current]
@@ -529,7 +548,6 @@ else:
         summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
-        # Calculate monthly goal based on a weekly goal (for 7 days) and round down.
         summary_compare["goal"] = summary_compare["habit"].apply(
             lambda habit: int(float(st.session_state.data["goals"].get(habit, 0)) / 7 * num_days)
         )
@@ -576,7 +594,6 @@ else:
         )
         st.plotly_chart(fig_compare, use_container_width=True)
         
-        # --- MONTHLY HEATMAP ---
         days = [datetime.date(year, month, d) for d in range(1, num_days+1)]
         heatmap_data = []
         text_data = []
@@ -625,7 +642,6 @@ else:
         st.plotly_chart(fig_heatmap, use_container_width=True)
                 
     elif view_option == "Yearly":
-        # --- YEARLY NAVIGATION ---
         if "tracker_year" not in st.session_state:
             st.session_state.tracker_year = today.year
         selected_year = st.session_state.tracker_year
@@ -641,7 +657,6 @@ else:
                 st.session_state.tracker_year = st.session_state.tracker_year + 1
                 force_rerun()
         
-        # Filter data for current year and previous year
         mask_current = (df["date"].dt.year == selected_year)
         mask_prev = (df["date"].dt.year == (selected_year - 1))
         df_current = df[mask_current]
@@ -656,7 +671,6 @@ else:
         summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
-        # Calculate yearly goal based on a weekly goal (for 7 days) and round down.
         days_in_year = 366 if calendar.isleap(selected_year) else 365
         summary_compare["goal"] = summary_compare["habit"].apply(
             lambda habit: int(float(st.session_state.data["goals"].get(habit, 0)) / 7 * days_in_year)
@@ -704,7 +718,6 @@ else:
         )
         st.plotly_chart(fig_compare, use_container_width=True)
         
-        # --- YEARLY HEATMAP ---
         months = list(range(1, 13))
         month_names = [calendar.month_abbr[m] for m in months]
         heatmap_data = []
@@ -718,7 +731,6 @@ else:
                 text_row.append(f"{habit} in {calendar.month_abbr[m]} {selected_year}: {count} successes")
             heatmap_data.append(row)
             text_data.append(text_row)
-        # Detailed colorscale for yearly heatmap
         colorscale_yearly = [
             [0.0, "#eaeaea"],
             [0.25, "#c7e9c0"],
