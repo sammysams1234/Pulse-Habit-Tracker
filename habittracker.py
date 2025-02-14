@@ -5,7 +5,6 @@ import calendar
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from wordcloud import WordCloud
 import json
 import hashlib
 import base64
@@ -334,8 +333,8 @@ st.markdown('</div>', unsafe_allow_html=True)
 #############################
 st.markdown("---")
 
+# Build a DataFrame of successful habit records
 habit_colors = {habit: get_habit_color(habit) for habit in st.session_state.data["habits"].keys()}
-
 records = []
 for habit, days in st.session_state.data["habits"].items():
     for date_str, outcome in days.items():
@@ -345,7 +344,6 @@ for habit, days in st.session_state.data["habits"].items():
                 records.append({"habit": habit, "date": date_obj})
             except Exception:
                 pass
-
 if not records:
     st.info("No habit success data available yet. Start tracking your habits!")
 else:
@@ -358,18 +356,18 @@ else:
     df = pd.DataFrame(records)
     
     if view_option == "Weekly":
-        # --- WEEK NAVIGATION ---
+        # --- WEEKLY NAVIGATION ---
         current_week_start = st.session_state.tracker_week
         current_week_end = current_week_start + datetime.timedelta(days=6)
         col_prev, col_center, col_next = st.columns([1,2,1])
         with col_prev:
-            if st.button("◀ Previous Week"):
+            if st.button("◀ Previous Week", key="prev_week"):
                 st.session_state.tracker_week = st.session_state.tracker_week - datetime.timedelta(days=7)
                 force_rerun()
         with col_center:
             st.markdown(f"### Week of {current_week_start.strftime('%Y-%m-%d')}")
         with col_next:
-            if st.button("Next Week ▶"):
+            if st.button("Next Week ▶", key="next_week"):
                 st.session_state.tracker_week = st.session_state.tracker_week + datetime.timedelta(days=7)
                 force_rerun()
         
@@ -395,8 +393,8 @@ else:
         summary_compare = pd.merge(current_summary, last_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["last_success_count"] = summary_compare["last_success_count"].astype(int)
+        # For weekly view, assume stored goal is already weekly; if not, you might use: goal = daily_goal * 7
         summary_compare["goal"] = summary_compare["habit"].apply(lambda habit: st.session_state.data["goals"].get(habit, 0))
-
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
         for idx, row in sorted_compare.iterrows():
@@ -492,30 +490,93 @@ else:
         st.plotly_chart(fig_heatmap_weekly, use_container_width=True)
                 
     elif view_option == "Monthly":
-        df["month"] = df["date"].dt.to_period("M").astype(str)
-        monthly = df.groupby(["month", "habit"]).size().reset_index(name="success_count")
-        monthly = monthly.sort_values("month")
-        fig_monthly = px.line(
-            monthly,
-            x="month",
-            y="success_count",
-            color="habit",
-            markers=True,
-            color_discrete_map=habit_colors,
+        # --- MONTHLY NAVIGATION ---
+        current_month_start = st.session_state.tracker_month
+        year = current_month_start.year
+        month = current_month_start.month
+        num_days = calendar.monthrange(year, month)[1]
+        current_month_end = datetime.date(year, month, num_days)
+        col_prev, col_center, col_next = st.columns([1,2,1])
+        with col_prev:
+            if st.button("◀ Previous Month", key="prev_month"):
+                st.session_state.tracker_month = shift_month(current_month_start, -1)
+                force_rerun()
+        with col_center:
+            st.markdown(f"### {current_month_start.strftime('%B %Y')}")
+        with col_next:
+            if st.button("Next Month ▶", key="next_month"):
+                st.session_state.tracker_month = shift_month(current_month_start, 1)
+                force_rerun()
+        
+        # Determine previous month for comparison
+        prev_month_start = shift_month(current_month_start, -1)
+        prev_year = prev_month_start.year
+        prev_month = prev_month_start.month
+        prev_num_days = calendar.monthrange(prev_year, prev_month)[1]
+        prev_month_end = datetime.date(prev_year, prev_month, prev_num_days)
+        
+        # Filter data for current month and previous month
+        mask_current = (df["date"].dt.date >= current_month_start) & (df["date"].dt.date <= current_month_end)
+        mask_prev = (df["date"].dt.date >= prev_month_start) & (df["date"].dt.date <= prev_month_end)
+        df_current = df[mask_current]
+        df_prev = df[mask_prev]
+        current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
+        prev_summary = df_prev.groupby("habit").size().reset_index(name="prev_success_count")
+        for habit in st.session_state.data["habits"].keys():
+            if habit not in current_summary["habit"].values:
+                current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
+            if habit not in prev_summary["habit"].values:
+                prev_summary = pd.concat([prev_summary, pd.DataFrame([{"habit": habit, "prev_success_count": 0}])], ignore_index=True)
+        summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
+        summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
+        summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
+        # Calculate monthly goal = daily goal * num_days in current month
+        summary_compare["goal"] = summary_compare["habit"].apply(lambda habit: st.session_state.data["goals"].get(habit, 0) * num_days)
+        cols = st.columns(3)
+        sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
+        for idx, row in sorted_compare.iterrows():
+            habit = row["habit"]
+            goal_val = row["goal"]
+            if row["prev_success_count"] > 0:
+                delta_value = row["current_success_count"] - row["prev_success_count"]
+                delta_str = f"{delta_value:+}"
+            else:
+                delta_str = "N/A"
+            if goal_val > 0:
+                current_pct = row["current_success_count"] / goal_val * 100
+            else:
+                current_pct = 0
+            value_str = f"{row['current_success_count']} / {goal_val} ({current_pct:.0f}%)"
+            col = cols[idx % 3]
+            col.metric(label=habit, value=value_str, delta=delta_str)
+        melt_compare = summary_compare.melt(
+            id_vars="habit", 
+            value_vars=["current_success_count", "prev_success_count", "goal"],
+            var_name="Metric", 
+            value_name="Count"
+        )
+        melt_compare["Metric"] = melt_compare["Metric"].map({
+            "current_success_count": "Current Month",
+            "prev_success_count": "Previous Month",
+            "goal": "Goal"
+        })
+        fig_compare = px.bar(
+            melt_compare,
+            x="habit",
+            y="Count",
+            color="Metric",
+            barmode="group",
+            color_discrete_map={
+                "Current Month": "#64b5f6",
+                "Previous Month": "#0d47a1",
+                "Goal": "#2E7D32"
+            },
             template="plotly_white"
         )
-        st.plotly_chart(fig_monthly, use_container_width=True)
-        col_prev, col_center, col_next = st.columns([1, 2, 1])
-        with col_prev:
-            if st.button("◀ Previous Month"):
-                st.session_state.tracker_month = shift_month(st.session_state.tracker_month, -1)
-        with col_next:
-            if st.button("Next Month ▶"):
-                st.session_state.tracker_month = shift_month(st.session_state.tracker_month, 1)
-        year = st.session_state.tracker_month.year
-        month = st.session_state.tracker_month.month
-        num_days = calendar.monthrange(year, month)[1]
-        days = [datetime.date(year, month, d) for d in range(1, num_days + 1)]
+        st.plotly_chart(fig_compare, use_container_width=True)
+        
+        # --- MONTHLY HEATMAP ---
+        days = [datetime.date(year, month, d) for d in range(1, num_days+1)]
         heatmap_data = []
         text_data = []
         for habit in st.session_state.data["habits"].keys():
@@ -562,74 +623,111 @@ else:
             title="Monthly Success Heatmap"
         )
         st.plotly_chart(fig_heatmap, use_container_width=True)
-        
+                
     elif view_option == "Yearly":
-        df["year"] = df["date"].dt.year
-        yearly = df.groupby(["year", "habit"]).size().reset_index(name="success_count")
-        yearly = yearly.sort_values("year")
-        fig_yearly = px.line(
-            yearly,
-            x="year",
-            y="success_count",
-            color="habit",
-            markers=True,
-            color_discrete_map=habit_colors,
-            template="plotly_white",
-            title="Yearly Success Trends"
-        )
-        st.plotly_chart(fig_yearly, use_container_width=True)
-        
+        # --- YEARLY NAVIGATION ---
         if "tracker_year" not in st.session_state:
             st.session_state.tracker_year = today.year
-
-        col_prev, col_center, col_next = st.columns([1, 2, 1])
+        selected_year = st.session_state.tracker_year
+        col_prev, col_center, col_next = st.columns([1,2,1])
         with col_prev:
-            if st.button("◀ Previous Year"):
-                st.session_state.tracker_year -= 1
+            if st.button("◀ Previous Year", key="prev_year"):
+                st.session_state.tracker_year = st.session_state.tracker_year - 1
                 force_rerun()
         with col_center:
-            st.markdown(f"### {st.session_state.tracker_year}")
+            st.markdown(f"### {selected_year}")
         with col_next:
-            if st.button("Next Year ▶"):
-                st.session_state.tracker_year += 1
+            if st.button("Next Year ▶", key="next_year"):
+                st.session_state.tracker_year = st.session_state.tracker_year + 1
                 force_rerun()
-
-        selected_year = st.session_state.tracker_year
-        df_year = df[df["date"].dt.year == selected_year].copy()
-        df_year["month"] = df_year["date"].dt.month
-        yearly_pivot = df_year.groupby(["habit", "month"]).size().reset_index(name="count")
-        if not yearly_pivot.empty:
-            yearly_pivot = yearly_pivot.pivot(index="habit", columns="month", values="count").fillna(0)
-        else:
-            habits_list = list(st.session_state.data["habits"].keys())
-            yearly_pivot = pd.DataFrame(0, index=habits_list, columns=range(1, 13))
-
+        
+        # Filter data for current year and previous year
+        mask_current = (df["date"].dt.year == selected_year)
+        mask_prev = (df["date"].dt.year == (selected_year - 1))
+        df_current = df[mask_current]
+        df_prev = df[mask_prev]
+        current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
+        prev_summary = df_prev.groupby("habit").size().reset_index(name="prev_success_count")
+        for habit in st.session_state.data["habits"].keys():
+            if habit not in current_summary["habit"].values:
+                current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
+            if habit not in prev_summary["habit"].values:
+                prev_summary = pd.concat([prev_summary, pd.DataFrame([{"habit": habit, "prev_success_count": 0}])], ignore_index=True)
+        summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
+        summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
+        summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
+        # Yearly goal = daily goal * days in year (leap year or not)
+        days_in_year = 366 if calendar.isleap(selected_year) else 365
+        summary_compare["goal"] = summary_compare["habit"].apply(lambda habit: st.session_state.data["goals"].get(habit, 0) * days_in_year)
+        cols = st.columns(3)
+        sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
+        for idx, row in sorted_compare.iterrows():
+            habit = row["habit"]
+            goal_val = row["goal"]
+            if row["prev_success_count"] > 0:
+                delta_value = row["current_success_count"] - row["prev_success_count"]
+                delta_str = f"{delta_value:+}"
+            else:
+                delta_str = "N/A"
+            if goal_val > 0:
+                current_pct = row["current_success_count"] / goal_val * 100
+            else:
+                current_pct = 0
+            value_str = f"{row['current_success_count']} / {goal_val} ({current_pct:.0f}%)"
+            col = cols[idx % 3]
+            col.metric(label=habit, value=value_str, delta=delta_str)
+        melt_compare = summary_compare.melt(
+            id_vars="habit",
+            value_vars=["current_success_count", "prev_success_count", "goal"],
+            var_name="Metric",
+            value_name="Count"
+        )
+        melt_compare["Metric"] = melt_compare["Metric"].map({
+            "current_success_count": "Current Year",
+            "prev_success_count": "Previous Year",
+            "goal": "Goal"
+        })
+        fig_compare = px.bar(
+            melt_compare,
+            x="habit",
+            y="Count",
+            color="Metric",
+            barmode="group",
+            color_discrete_map={
+                "Current Year": "#64b5f6",
+                "Previous Year": "#0d47a1",
+                "Goal": "#2E7D32"
+            },
+            template="plotly_white"
+        )
+        st.plotly_chart(fig_compare, use_container_width=True)
+        
+        # --- YEARLY HEATMAP ---
         months = list(range(1, 13))
-        for m in months:
-            if m not in yearly_pivot.columns:
-                yearly_pivot[m] = 0
-        yearly_pivot = yearly_pivot[months]
         month_names = [calendar.month_abbr[m] for m in months]
-        heatmap_matrix = yearly_pivot.values
-
+        heatmap_data = []
         text_data = []
-        for habit in yearly_pivot.index:
-            row_text = []
+        for habit in st.session_state.data["habits"].keys():
+            row = []
+            text_row = []
             for m in months:
-                count = yearly_pivot.loc[habit, m]
-                row_text.append(f"{habit} in {calendar.month_abbr[m]} {selected_year}: {int(count)} successes")
-            text_data.append(row_text)
-
+                count = df_current[(df_current["habit"]==habit) & (df_current["date"].dt.month == m)].shape[0]
+                row.append(count)
+                text_row.append(f"{habit} in {calendar.month_abbr[m]} {selected_year}: {count} successes")
+            heatmap_data.append(row)
+            text_data.append(text_row)
+        # Detailed colorscale for yearly heatmap
         colorscale_yearly = [
             [0.0, "#eaeaea"],
-            [0.5, success_green],
+            [0.25, "#c7e9c0"],
+            [0.5, "#a1d99b"],
+            [0.75, "#74c476"],
             [1.0, success_green]
         ]
-        
-        fig_year_heatmap = go.Figure(data=go.Heatmap(
-            z=heatmap_matrix,
+        fig_heatmap = go.Figure(data=go.Heatmap(
+            z=heatmap_data,
             x=month_names,
-            y=yearly_pivot.index,
+            y=list(st.session_state.data["habits"].keys()),
             text=text_data,
             hoverinfo="text",
             colorscale=colorscale_yearly,
@@ -637,8 +735,10 @@ else:
             xgap=3,
             ygap=3
         ))
-        fig_year_heatmap.update_layout(
-            title=f"Monthly Success Heatmap for {selected_year}",
-            template="plotly_white"
+        fig_heatmap.update_layout(
+            xaxis=dict(showgrid=False),
+            yaxis=dict(showgrid=False),
+            template="plotly_white",
+            title="Yearly Success Heatmap"
         )
-        st.plotly_chart(fig_year_heatmap, use_container_width=True)
+        st.plotly_chart(fig_heatmap, use_container_width=True)
