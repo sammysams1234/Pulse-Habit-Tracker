@@ -159,7 +159,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                     st.session_state.logged_in = True
                     st.session_state.username = username
                     st.session_state.name = display_name
-                    st.session_state.page = "Pulse"  # default page
+                    st.session_state.page = "Pulse"  # default page (retained for state consistency)
                     st.success(f"Welcome, {display_name}!")
                 else:
                     st.error("Invalid username or password.")
@@ -311,39 +311,6 @@ def get_summary_for_entries(entries_text, period):
         return f"Error generating summary: {e}"
 
 # =====================================================
-# APP NAVIGATION (Sidebar)
-# =====================================================
-if "page" not in st.session_state:
-    st.session_state.page = "Pulse"
-
-# Update navigation options to three tabs.
-page_options = ["Pulse", "Analytics", "Journal"]
-page = st.sidebar.radio("Navigation", page_options, index=page_options.index(st.session_state.page))
-st.session_state.page = page
-st.sidebar.write(f"Logged in as **{st.session_state.name}**")
-
-# -------------------------------
-# PAGE HEADER: LOGO & TITLE
-# -------------------------------
-base64_image = get_base64_image("assets/app_icon.png")
-if page == "Pulse":
-    header_text = "Pulse Weekly Habit Tracker"
-elif page == "Analytics":
-    header_text = "Pulse Analytics"
-elif page == "Journal":
-    header_text = "Pulse Journal"
-else:
-    header_text = ""
-
-header_html = f"""
-<div style="display: flex; align-items: center; margin-bottom: 20px;">
-    <img src="data:image/png;base64,{base64_image}" alt="App Icon" style="height: 100px; margin-right: 20px;">
-    <h1 style="color: #0096FF; font-size: 32px;">{header_text}</h1>
-</div>
-"""
-components.html(header_html, height=150)
-
-# =====================================================
 # LOAD USER DATA (DECRYPTED) & INITIALIZE SESSION STATE
 # =====================================================
 user_id = st.session_state.username
@@ -363,9 +330,28 @@ for habit in st.session_state.data["habits"]:
     update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
 
 # =====================================================
-# PAGE: PULSE (Main Habit Tracker)
+# TOP TABS NAVIGATION
 # =====================================================
-if page == "Pulse":    
+tabs = st.tabs(["Pulse", "Analytics", "Journal"])
+
+# -------------------------------
+# PAGE HEADER: LOGO & TITLE (Common to All Tabs)
+# -------------------------------
+base64_image = get_base64_image("assets/app_icon.png")
+header_html = f"""
+<div style="display: flex; align-items: center; margin-bottom: 20px;">
+    <img src="data:image/png;base64,{base64_image}" alt="App Icon" style="height: 100px; margin-right: 20px;">
+    <h1 style="color: #0096FF; font-size: 32px;">Pulse</h1>
+    <h2 style="margin-left: 20px;">Logged in as <span style="color:#2E7D32;">{st.session_state.name}</span></h2>
+</div>
+"""
+components.html(header_html, height=150)
+
+# =====================================================
+# TAB: PULSE (Main Habit Tracker)
+# =====================================================
+with tabs[0]:
+    st.header("Pulse Weekly Habit Tracker")
     # -------------------------------
     # Manage Habits Section
     # -------------------------------
@@ -449,9 +435,10 @@ if page == "Pulse":
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =====================================================
-# PAGE: ANALYTICS (Habit Tracking Analytics)
+# TAB: ANALYTICS (Habit Tracking Analytics)
 # =====================================================
-elif page == "Analytics":
+with tabs[1]:
+    st.header("Pulse Analytics")
     view_option = st.selectbox(
         "Filter analytics view:",
         ["Weekly", "Monthly", "Yearly"],
@@ -777,9 +764,10 @@ elif page == "Analytics":
             st.plotly_chart(fig_heatmap, use_container_width=True)
 
 # =====================================================
-# PAGE: JOURNAL (Daily Journal)
+# TAB: JOURNAL (Daily Journal)
 # =====================================================
-elif page == "Journal":
+with tabs[2]:
+    st.header("Pulse Journal")
     today = datetime.date.today()
     today_str = today.strftime("%Y-%m-%d")
     st.subheader(f"Journal Entry for {today_str}")
