@@ -341,8 +341,27 @@ base64_image = get_base64_image("assets/app_icon.png")
 header_html = f"""
 <div style="display: flex; align-items: center; margin-bottom: 20px;">
     <img src="data:image/png;base64,{base64_image}" alt="App Icon" style="height: 100px; margin-right: 20px;">
-    <p id="typed" style="font-size: 24px; margin: 0; color: white;"></p>
+    <p id="typed"></p>
 </div>
+<style>
+  /* Base styling for the typed text */
+  #typed {{
+      font-size: 24px;
+      margin: 0;
+  }}
+  /* When the user prefers dark mode */
+  @media (prefers-color-scheme: dark) {{
+      #typed {{
+          color: white;
+      }}
+  }}
+  /* When the user prefers light mode */
+  @media (prefers-color-scheme: light) {{
+      #typed {{
+          color: black;
+      }}
+  }}
+</style>
 <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
 <script>
   var typed = new Typed('#typed', {{
