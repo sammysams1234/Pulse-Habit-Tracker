@@ -13,6 +13,7 @@ import openai
 import bcrypt
 from firebase_admin import credentials, db
 import streamlit.components.v1 as components
+from cryptography.fernet import Fernet, InvalidToken
 
 # -------------------------------
 # SET PAGE CONFIGURATION
@@ -46,6 +47,31 @@ openai.api_key = os.environ.get("OPENAI_API_KEY")
 if openai.api_key is None:
     st.warning("OpenAI API key is not set in the environment. Journal summarization will not work.")
 
+# -------------------------------
+# SETUP DATA ENCRYPTION (Fernet)
+# -------------------------------
+data_encryption_key = os.environ.get("DATA_ENCRYPTION_KEY")
+if not data_encryption_key:
+    st.error("DATA_ENCRYPTION_KEY is not set in the environment. All user data will not be encrypted!")
+    # You might want to stop the app here.
+try:
+    fernet = Fernet(data_encryption_key.encode())
+except Exception as e:
+    st.error("Error initializing encryption: " + str(e))
+
+def encrypt_json(data: dict) -> str:
+    json_str = json.dumps(data)
+    token = fernet.encrypt(json_str.encode()).decode()
+    return token
+
+def decrypt_json(token: str) -> dict:
+    try:
+        decrypted = fernet.decrypt(token.encode()).decode()
+        return json.loads(decrypted)
+    except InvalidToken:
+        st.error("Error decrypting data. Data may be corrupted or the encryption key is invalid.")
+        return {}
+
 def get_base64_image(image_path):
     try:
         with open(image_path, "rb") as img_file:
@@ -75,11 +101,11 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
         if "credentials" in data:
             return False  # User already exists.
         else:
+            # Save credentials (password is hashed)
             data["credentials"] = {"name": name, "password": hashed_pw}
-            data["goals"] = {}
-            data["habits"] = {}
-            data["streaks"] = {}
-            data["journal"] = {}
+            # Instead of separate nodes, combine all other user data into one encrypted blob.
+            initial_data = {"habits": {}, "goals": {}, "streaks": {}, "journal": {}}
+            data["data"] = encrypt_json(initial_data)
             ref.set(data)
             return True
 
@@ -140,51 +166,25 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.stop()  # Stop execution until the user logs in.
 
 # =====================================================
-# HELPER FUNCTIONS COMMON TO HABIT TRACKER & JOURNAL
+# HELPER FUNCTIONS FOR ENCRYPTED USER DATA
 # =====================================================
-
-def get_base64_image(image_path):
-    try:
-        with open(image_path, "rb") as img_file:
-            encoded = base64.b64encode(img_file.read()).decode()
-        return encoded
-    except Exception as e:
-        st.error(f"Error loading image at {image_path}: {e}")
-        return ""
-
-# =====================================================
-# HABIT TRACKER FUNCTIONS & INITIALIZATION
-# =====================================================
-
-user_id = st.session_state.username
-
 def load_user_data(user_id):
-    ref = db.reference(f"users/{user_id}")
-    data = ref.get() or {}
-    if "habits" not in data or not isinstance(data["habits"], dict):
-        data["habits"] = {}
-        ref.child("habits").set(data["habits"])
-    if "goals" not in data or not isinstance(data["goals"], dict):
-        data["goals"] = {}
-        ref.child("goals").set(data["goals"])
-    if "streaks" not in data or not isinstance(data["streaks"], dict):
-        data["streaks"] = {}
-        ref.child("streaks").set(data["streaks"])
-    if "journal" not in data or not isinstance(data["journal"], dict):
-        data["journal"] = {}
-        ref.child("journal").set(data["journal"])
-    if "Sleeping before 12" in data["habits"]:
-        data["habits"]["Sleep"] = data["habits"].pop("Sleeping before 12")
-        ref.child("habits").set(data["habits"])
-    return data
+    ref = db.reference(f"users/{user_id}/data")
+    encrypted = ref.get()
+    if not encrypted:
+        data = {"habits": {}, "goals": {}, "streaks": {}, "journal": {}}
+        ref.set(encrypt_json(data))
+        return data
+    else:
+        return decrypt_json(encrypted)
 
 def save_user_data(user_id, data):
-    ref = db.reference(f"users/{user_id}")
-    ref.child("habits").set(data["habits"])
-    ref.child("goals").set(data["goals"])
-    if "streaks" in data:
-        ref.child("streaks").set(data["streaks"])
+    ref = db.reference(f"users/{user_id}/data")
+    ref.set(encrypt_json(data))
 
+# =====================================================
+# OTHER HELPER FUNCTIONS (unchanged)
+# =====================================================
 def shift_month(date_obj, delta):
     year = date_obj.year
     month = date_obj.month + delta
@@ -246,42 +246,20 @@ def update_streaks_for_habit(user_id, habit, habit_data, today):
     if "streaks" not in st.session_state.data:
         st.session_state.data["streaks"] = {}
     st.session_state.data["streaks"][habit] = data_to_store
-    ref = db.reference(f"users/{user_id}/streaks/{habit}")
-    ref.set(data_to_store)
-
-if "data" not in st.session_state:
-    st.session_state.data = load_user_data(user_id)
-if "tracker_month" not in st.session_state:
-    st.session_state.tracker_month = datetime.date.today().replace(day=1)
-if "analytics_view" not in st.session_state:
-    st.session_state.analytics_view = "Weekly"
-if "tracker_week" not in st.session_state:
-    today = datetime.date.today()
-    st.session_state.tracker_week = today - datetime.timedelta(days=today.weekday())
-
-today = datetime.date.today()
-today_str = today.strftime("%Y-%m-%d")
-for habit in st.session_state.data["habits"]:
-    update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
+    save_user_data(user_id, st.session_state.data)
 
 # =====================================================
-# JOURNAL FUNCTIONS
+# JOURNAL FUNCTIONS (using encrypted blob)
 # =====================================================
+def get_journal_entry(date_str):
+    return st.session_state.data["journal"].get(date_str)
 
-def get_journal_entry(user_id, date_str):
-    ref = db.reference(f"users/{user_id}/journal/{date_str}")
-    return ref.get()
+def save_journal_entry(date_str, entry):
+    st.session_state.data["journal"][date_str] = entry
+    save_user_data(user_id, st.session_state.data)
 
-def save_journal_entry(user_id, date_str, entry):
-    ref = db.reference(f"users/{user_id}/journal/{date_str}")
-    ref.set(entry)
-
-def fetch_journal_entries(user_id):
-    ref = db.reference(f"users/{user_id}/journal")
-    entries = ref.get()
-    if not isinstance(entries, dict):
-        entries = {}
-    return entries
+def fetch_journal_entries():
+    return st.session_state.data.get("journal", {})
 
 def filter_entries_by_period(entries, period, today):
     filtered = {}
@@ -321,6 +299,10 @@ def get_summary_for_entries(entries_text, period):
         "Provide a brief motivational summary that helps me stay positive and focused.\n\n"
         f"{entries_text}"
     )
+    # Check if the new ChatCompletion interface is available.
+    if not hasattr(openai, "ChatCompletion"):
+        return ("OpenAI ChatCompletion is not available in your current openai library version. "
+                "Please run `openai migrate` to update your codebase or pin your openai version to <1.0.0.")
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
@@ -339,7 +321,6 @@ def get_summary_for_entries(entries_text, period):
 # =====================================================
 # APP NAVIGATION (Sidebar)
 # =====================================================
-
 if "page" not in st.session_state:
     st.session_state.page = "Habit Tracker 📆"
 
@@ -371,6 +352,25 @@ header_html = f"""
 components.html(header_html, height=150)
 
 # =====================================================
+# LOAD USER DATA (DECRYPTED) & INITIALIZE SESSION STATE
+# =====================================================
+user_id = st.session_state.username
+if "data" not in st.session_state:
+    st.session_state.data = load_user_data(user_id)
+if "tracker_month" not in st.session_state:
+    st.session_state.tracker_month = datetime.date.today().replace(day=1)
+if "analytics_view" not in st.session_state:
+    st.session_state.analytics_view = "Weekly"
+if "tracker_week" not in st.session_state:
+    today = datetime.date.today()
+    st.session_state.tracker_week = today - datetime.timedelta(days=today.weekday())
+
+today = datetime.date.today()
+today_str = today.strftime("%Y-%m-%d")
+for habit in st.session_state.data["habits"]:
+    update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
+
+# =====================================================
 # PAGE: HABIT TRACKER & ANALYTICS
 # =====================================================
 if page == "Habit Tracker 📆":
@@ -379,7 +379,6 @@ if page == "Habit Tracker 📆":
     # -------------------------------
     # Manage Habits Section
     # -------------------------------
-    # Expand the habit manager if no habits exist.
     with st.expander("Manage Habits", expanded=False):
         st.subheader("Add Habit")
         new_habit = st.text_input("Habit", key="new_habit_input")
@@ -418,7 +417,6 @@ if page == "Habit Tracker 📆":
         else:
             st.info("No habits available yet.")
 
-    # If there are no habits, hide the rest of the tracker/analytics views.
     if not st.session_state.data["habits"]:
         st.info("No habit data available yet. Start tracking your habits by adding one above!")
         st.stop()
@@ -464,7 +462,6 @@ if page == "Habit Tracker 📆":
     # Analytics Section
     # -------------------------------
     st.markdown("---")
-    # Container for the analytics filter dropdown:
     with st.container():
         st.markdown("### Analytics")
         view_option = st.selectbox(
@@ -799,7 +796,7 @@ elif page == "Journal 🗒️":
     today = datetime.date.today()
     today_str = today.strftime("%Y-%m-%d")
     st.subheader(f"Journal Entry for {today_str}")
-    existing_entry = get_journal_entry(user_id, today_str)
+    existing_entry = get_journal_entry(today_str)
     default_feeling = existing_entry.get("feeling", "") if existing_entry else ""
     default_cause = existing_entry.get("cause", "") if existing_entry else ""
     with st.form("journal_entry_form"):
@@ -815,14 +812,14 @@ elif page == "Journal 🗒️":
             }
             if existing_entry and "summary" in existing_entry:
                 entry["summary"] = existing_entry["summary"]
-            save_journal_entry(user_id, today_str, entry)
+            save_journal_entry(today_str, entry)
             st.success(f"Journal entry for {today_str} saved successfully!")
     st.markdown("---")
     st.header("Get Journal Summary")
     summary_period = st.radio("Select period to summarize", ["Daily", "Weekly", "Monthly"], index=0)
     if st.button("Generate Summary"):
         with st.spinner("Fetching and summarizing your journal entries..."):
-            all_entries = fetch_journal_entries(user_id)
+            all_entries = fetch_journal_entries()
             filtered_entries = filter_entries_by_period(all_entries, summary_period, today)
             if not filtered_entries:
                 st.info(f"No journal entries found for the selected {summary_period.lower()} period.")
@@ -832,12 +829,12 @@ elif page == "Journal 🗒️":
                 st.subheader(f"{summary_period} Summary")
                 st.write(summary)
                 if summary_period == "Daily":
-                    daily_entry = get_journal_entry(user_id, today_str) or {}
+                    daily_entry = get_journal_entry(today_str) or {}
                     daily_entry["summary"] = summary
-                    save_journal_entry(user_id, today_str, daily_entry)
+                    save_journal_entry(today_str, daily_entry)
                     st.info("Daily summary has been saved to your journal entry.")
     with st.expander("Show Past Journal Entries"):
-        all_entries = fetch_journal_entries(user_id)
+        all_entries = fetch_journal_entries()
         if not all_entries:
             st.info("No journal entries recorded yet.")
         else:
