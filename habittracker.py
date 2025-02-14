@@ -151,7 +151,11 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                     st.session_state.name = display_name
                     st.session_state.page = "Pulse"  # Set default page to Pulse.
                     st.success("Account created successfully! You are now logged in.")
-                    st.experimental_rerun()  # Rerun to load the Pulse page.
+                    # Rerun the app so the main page loads.
+                    if hasattr(st, "experimental_rerun"):
+                        st.experimental_rerun()
+                    else:
+                        st.write("Please refresh the page to continue.")
                 else:
                     st.error("Username already exists. Please choose another.")
 
@@ -169,7 +173,6 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                     st.session_state.logged_in = True
                     st.session_state.username = username
                     st.session_state.name = display_name
-                    # Set default page to Pulse so it mimics a sidebar click.
                     st.session_state.page = "Pulse"
                     st.success(f"Welcome, {display_name}!")
                 else:
@@ -345,7 +348,6 @@ st.sidebar.write(f"Logged in as **{st.session_state.name}**")
 # PAGE HEADER: LOGO & TITLE
 # -------------------------------
 base64_image = get_base64_image("assets/app_icon.png")
-# Set header text based on current page and use a purple color (#800080)
 if page == "Pulse":
     header_text = "Pulse"
 elif page == "Daily Journal":
