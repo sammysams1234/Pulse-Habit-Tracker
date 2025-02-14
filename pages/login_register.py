@@ -94,7 +94,7 @@ if action == "Login":
             else:
                 st.error("Invalid username or password.")
 
-# --- Automatic redirection to the habit tracker page if logged in ---
+# --- Automatic redirect if logged in using JavaScript ---
 if "logged_in" in st.session_state and st.session_state.logged_in:
-    st.markdown("<meta http-equiv='refresh' content='0; url=/habittracker'>", unsafe_allow_html=True)
+    st.write("<script>window.location.href='/habittracker';</script>", unsafe_allow_html=True)
     st.stop()
