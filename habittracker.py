@@ -374,7 +374,8 @@ if page == "Habit Tracker 📆":
     # -------------------------------
     # Manage Habits Section
     # -------------------------------
-    with st.expander("Manage Habits", expanded=False):
+    # Expand the habit manager if no habits exist.
+    with st.expander("Manage Habits", expanded=(not st.session_state.data["habits"])):
         st.subheader("Add Habit")
         new_habit = st.text_input("Habit", key="new_habit_input")
         new_goal = st.number_input("Set Goal", min_value=1, value=1, key="new_goal_input")
@@ -390,7 +391,7 @@ if page == "Habit Tracker 📆":
                 update_streaks_for_habit(user_id, new_habit, st.session_state.data["habits"][new_habit], today)
                 save_user_data(user_id, st.session_state.data)
                 st.success(f"Habit '{new_habit}' added successfully!")
-
+        
         st.subheader("Manage Habits")
         if st.session_state.data["habits"]:
             for habit in list(st.session_state.data["habits"].keys()):
@@ -410,7 +411,12 @@ if page == "Habit Tracker 📆":
                     save_user_data(user_id, st.session_state.data)
                     st.success(f"Habit '{habit}' removed successfully!")
         else:
-            st.info("No habits available.")
+            st.info("No habits available yet.")
+
+    # If there are no habits, hide the rest of the tracker/analytics views.
+    if not st.session_state.data["habits"]:
+        st.info("No habit data available yet. Start tracking your habits by adding one above!")
+        st.stop()
 
     # -------------------------------
     # Habit Tracker Section (Weekly Editing)
