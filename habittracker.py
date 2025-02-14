@@ -355,7 +355,7 @@ header_html = f"""
 <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
 <script>
   var typed = new Typed('#typed', {{
-    strings: ["Remember why you started", "Embrace the journey", "Stay positive! **{st.session_state.name}**"],
+    strings: ["Remember why you started", "Embrace the journey", "Stay positive, {st.session_state.name}!"],
     typeSpeed: 50,
     backSpeed: 25,
     backDelay: 2000,
