@@ -1,4 +1,3 @@
-
 import streamlit as st
 import datetime
 import os
@@ -146,7 +145,13 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                 hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
                 success = register_user(username, display_name, hashed_pw)
                 if success:
-                    st.success("Account created successfully! Please switch to the Login tab and log in.")
+                    st.success("Account created successfully! Logging you in automatically.")
+                    # Automatically log the user in:
+                    st.session_state.logged_in = True
+                    st.session_state.username = username
+                    st.session_state.name = display_name
+                    st.session_state.page = "Pulse"  # Set the default page
+                    st.experimental_rerun()  # Rerun the app so that the login block is skipped
                 else:
                     st.error("Username already exists. Please choose another.")
 
