@@ -7,6 +7,16 @@ from firebase_admin import credentials, db
 import openai
 
 # ---------------------------------------------------
+# Login Check
+# ---------------------------------------------------
+if "logged_in" not in st.session_state or not st.session_state.logged_in:
+    st.error("You must be logged in to view the Journal page. Please login via the Login page.")
+    st.stop()
+
+# Use the logged-in user's username as user_id.
+user_id = st.session_state.username
+
+# ---------------------------------------------------
 # Firebase & OpenAI Setup
 # ---------------------------------------------------
 if not firebase_admin._apps:
@@ -101,9 +111,7 @@ def build_entries_text(entries):
     return "\n".join(texts)
 
 def get_summary_for_entries(entries_text, period):
-    """Call the OpenAI API to generate a motivational summary from the journal entries.
-       (This function has been updated to use the new client method.)
-    """
+    """Call the OpenAI API to generate a motivational summary from the journal entries."""
     if not entries_text.strip():
         return "No journal entries to summarize."
     prompt = (
@@ -113,7 +121,7 @@ def get_summary_for_entries(entries_text, period):
         f"{entries_text}"
     )
     try:
-        # Using the newer client interface: openai.chat.completions.create
+        # Using the newer client interface
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -132,7 +140,6 @@ def get_summary_for_entries(entries_text, period):
 # MAIN PAGE: Journal Entry Input
 # ---------------------------------------------------
 st.title("Daily Journal 📝")
-user_id = "default_user"  # Replace with your auth/user system as needed
 today = datetime.date.today()
 today_str = today.strftime("%Y-%m-%d")
 st.subheader(f"Journal Entry for {today_str}")
@@ -179,9 +186,7 @@ if st.button("Generate Summary"):
             st.write(summary)
 
             # Save the summary to the database if the period is Daily.
-            # (For weekly or monthly, you might want to store these summaries elsewhere.)
             if summary_period == "Daily":
-                # Retrieve the current entry (or start with an empty dict) and update it with the summary.
                 daily_entry = get_journal_entry(user_id, today_str) or {}
                 daily_entry["summary"] = summary
                 save_journal_entry(user_id, today_str, daily_entry)
