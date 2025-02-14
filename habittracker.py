@@ -349,7 +349,7 @@ header_html = f"""
   #typed {{
       font-size: 24px;
       margin: 0;
-      color: #5D3FD3;
+      color: #0096FF;
   }}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
