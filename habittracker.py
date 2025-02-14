@@ -113,10 +113,10 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                     st.session_state.username = username
                     st.session_state.name = name
                     st.success(f"Welcome, {name}!")
-                    st.experimental_rerun()
+                    # Instead of st.experimental_rerun(), simply let the app continue
                 else:
                     st.error("Invalid username or password.")
-    st.stop()  # Stop execution until the user is logged in.
+    st.stop()  # Stop execution until the user logs in.
 
 # =====================================================
 # HELPER FUNCTIONS COMMON TO HABIT TRACKER & JOURNAL
@@ -132,10 +132,11 @@ def get_base64_image(image_path):
         st.error(f"Error loading image at {image_path}: {e}")
         return ""
 
-# --- Force a rerun ---
+# --- Dummy force rerun function (st.experimental_rerun is disabled) ---
 def force_rerun():
-    if hasattr(st, "experimental_rerun"):
-        st.experimental_rerun()
+    # This function is a placeholder.
+    # Remove any state that would normally be refreshed manually.
+    pass
 
 # =====================================================
 # HABIT TRACKER FUNCTIONS & INITIALIZATION
@@ -157,6 +158,9 @@ def load_user_data(user_id):
     if "streaks" not in data or not isinstance(data["streaks"], dict):
         data["streaks"] = {}
         ref.child("streaks").set(data["streaks"])
+    if "journal" not in data or not isinstance(data["journal"], dict):
+        data["journal"] = {}
+        ref.child("journal").set(data["journal"])
     # Optional migration logic (if needed)
     if "Sleeping before 12" in data["habits"]:
         data["habits"]["Sleep"] = data["habits"].pop("Sleeping before 12")
@@ -341,7 +345,6 @@ def get_summary_for_entries(entries_text, period):
 # APP NAVIGATION (Sidebar)
 # =====================================================
 
-# Sidebar navigation allows the user to switch between the Habit Tracker and Journal pages.
 page = st.sidebar.radio("Navigation", ["Habit Tracker", "Journal"])
 st.sidebar.write(f"Logged in as **{st.session_state.name}**")
 
@@ -761,7 +764,7 @@ if page == "Habit Tracker":
             with col_center:
                 st.markdown(f"### {selected_year}")
             with col_next:
-                if st.button("Next Year", key="next_year"):
+                if st.button("Next Year ▶", key="next_year"):
                     st.session_state.tracker_year = st.session_state.tracker_year + 1
                     force_rerun()
             
