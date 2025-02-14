@@ -35,6 +35,10 @@ def register_user(username, name, hashed_pw):
         return False  # User already exists.
     else:
         data["credentials"] = {"name": name, "password": hashed_pw}
+        # Initialize empty goals, habits, and streaks for this user.
+        data["goals"] = {}
+        data["habits"] = {}
+        data["streaks"] = {}
         ref.set(data)
         return True
 
@@ -58,8 +62,9 @@ action = st.radio("Select Action", ["Login", "Register"])
 
 if action == "Register":
     st.subheader("Create an Account")
-    username = st.text_input("Username", key="reg_username")
-    name = st.text_input("Name", key="reg_name")
+    # For this example, we expect the user to register as sammysams1234
+    username = st.text_input("Username", key="reg_username", value="sammysams1234")
+    name = st.text_input("Name", key="reg_name", value="Samuel")
     password = st.text_input("Password", type="password", key="reg_password")
     confirm_password = st.text_input("Confirm Password", type="password", key="reg_confirm")
     
@@ -78,7 +83,8 @@ if action == "Register":
 
 if action == "Login":
     st.subheader("Log In")
-    username = st.text_input("Username", key="login_username")
+    # Default to the sammysams1234 account
+    username = st.text_input("Username", key="login_username", value="sammysams1234")
     password = st.text_input("Password", type="password", key="login_password")
     
     if st.button("Login"):
