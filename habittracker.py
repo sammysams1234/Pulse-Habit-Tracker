@@ -1148,7 +1148,6 @@ with tab_todo:
 
     # ------------------- COMPLETED TASKS BY DATE -------------------
     with todo_main_tabs[2]:
-        st.subheader("Completed Tasks Breakdown")
 
         completed_tasks = [
             task for task in st.session_state.data["todo"] 
