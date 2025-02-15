@@ -407,7 +407,7 @@ def get_summary_for_tasks(tasks, period):
         tasks_text += f"Task: {task['task']} | Status: {status} | Date: {date_field}\n"
     prompt = (
         f"Please summarize the following to-do tasks for a {period.lower()} period. "
-        "Focus on which tasks were completed and which ones are still pending. "
+        "Focus on which tasks were completed only. "
         "Provide actionable insights and encouragement. "
         "Do not add any headings; only return the summary text.\n\n" + tasks_text
     )
