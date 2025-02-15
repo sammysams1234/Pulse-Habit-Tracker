@@ -1113,7 +1113,7 @@ with tab_todo:
             daily_summary = get_ai_tasks_summary(grouped_text, "Daily")
             st.write(daily_summary)
         else:
-            st.info("No tasks completed today.")
+            st.info("No tasks completed today. Remember to set some time aside to work on your goals!")
 
     # ------------------- COMPLETED TASK SUMMARY -------------------
     with todo_main_tabs[1]:
