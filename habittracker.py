@@ -448,80 +448,80 @@ with tab_pulse:
 # =====================================================
 with tab_analytics:
     components.html(build_header_html("Pulse Analytics"), height=150)
-
-    view_option = st.selectbox(
-        "Filter analytics view:",
-        ["Weekly", "Monthly", "Yearly"],
-        index=["Weekly", "Monthly", "Yearly"].index(st.session_state.analytics_view)
-    )
-    st.session_state.analytics_view = view_option
-
-    habit_colors = {habit: get_habit_color(habit) for habit in st.session_state.data["habits"].keys()}
-    records = []
-    for habit, days in st.session_state.data["habits"].items():
-        for date_str, outcome in days.items():
-            if outcome == "succeeded":
-                try:
-                    date_obj = pd.to_datetime(date_str)
-                    records.append({"habit": habit, "date": date_obj})
-                except Exception:
-                    pass
-    if not records:
-        st.info("No habit tracking data available yet. Start tracking your habits by marking the calendar!")
-    else:
-        df = pd.DataFrame(records)
-
-        # -----------------------------
-        # WEEKLY VIEW
-        # -----------------------------
-        if view_option == "Weekly":
-            current_week_start = st.session_state.tracker_week
-            current_week_end = current_week_start + datetime.timedelta(days=6)
-            col_prev, col_center, col_next = st.columns([1, 2, 1])
-            with col_prev:
-                if st.button("◀ Previous Week", key="prev_week"):
-                    st.session_state.tracker_week -= datetime.timedelta(days=7)
-            with col_center:
-                st.markdown(f"### Week of {current_week_start.strftime('%Y-%m-%d')}")
-            with col_next:
-                if st.button("Next Week ▶", key="next_week"):
-                    st.session_state.tracker_week += datetime.timedelta(days=7)
-
-            last_week_start = current_week_start - datetime.timedelta(days=7)
-            last_week_end = current_week_start - datetime.timedelta(days=1)
-            mask_current = (df["date"].dt.date >= current_week_start) & (df["date"].dt.date <= current_week_end)
-            mask_last = (df["date"].dt.date >= last_week_start) & (df["date"].dt.date <= last_week_end)
-            df_current = df[mask_current]
-            df_last = df[mask_last]
-
-            current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
-            last_summary = df_last.groupby("habit").size().reset_index(name="last_success_count")
-
-            # Ensure every habit is represented
-            for habit in st.session_state.data["habits"].keys():
-                if habit not in current_summary["habit"].values:
-                    current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
-                if habit not in last_summary["habit"].values:
-                    last_summary = pd.concat([last_summary, pd.DataFrame([{"habit": habit, "last_success_count": 0}])], ignore_index=True)
-
-            summary_compare = pd.merge(current_summary, last_summary, on="habit", how="outer").fillna(0)
-            summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
-            summary_compare["last_success_count"] = summary_compare["last_success_count"].astype(int)
-            summary_compare["goal"] = summary_compare["habit"].apply(lambda h: int(st.session_state.data["goals"].get(h, 0)))
-
-            # Show top metrics
-            cols = st.columns(3)
-            sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
-            for idx, row in sorted_compare.iterrows():
-                habit = row["habit"]
-                goal_val = row["goal"]
-                delta_str = f"{row['current_success_count'] - row['last_success_count']:+}" if row["last_success_count"] > 0 else "N/A"
-                current_pct = (row["current_success_count"] / goal_val * 100) if goal_val > 0 else 0
-                value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
-                col = cols[idx % 3]
-                col.metric(label=habit, value=value_str, delta=delta_str)
-
-            # Bar chart comparison
+    
+    # Use tabs for Weekly, Monthly, and Yearly views
+    analytics_tabs = st.tabs(["Weekly", "Monthly", "Yearly"])
+    
+    # -----------------------------
+    # WEEKLY VIEW
+    # -----------------------------
+    with analytics_tabs[0]:
+        current_week_start = st.session_state.tracker_week
+        current_week_end = current_week_start + datetime.timedelta(days=6)
+        col_prev, col_center, col_next = st.columns([1, 2, 1])
+        with col_prev:
+            if st.button("◀ Previous Week", key="prev_week"):
+                st.session_state.tracker_week -= datetime.timedelta(days=7)
+        with col_center:
+            st.markdown(f"### Week of {current_week_start.strftime('%Y-%m-%d')}")
+        with col_next:
+            if st.button("Next Week ▶", key="next_week"):
+                st.session_state.tracker_week += datetime.timedelta(days=7)
+    
+        last_week_start = current_week_start - datetime.timedelta(days=7)
+        last_week_end = current_week_start - datetime.timedelta(days=1)
+        # Build DataFrame from habit tracking successes
+        records = []
+        for habit, days in st.session_state.data["habits"].items():
+            for date_str, outcome in days.items():
+                if outcome == "succeeded":
+                    try:
+                        date_obj = pd.to_datetime(date_str)
+                        records.append({"habit": habit, "date": date_obj})
+                    except Exception:
+                        pass
+        if records:
+            df = pd.DataFrame(records)
+        else:
+            df = pd.DataFrame(columns=["habit", "date"])
+    
+        mask_current = (df["date"].dt.date >= current_week_start) & (df["date"].dt.date <= current_week_end)
+        mask_last = (df["date"].dt.date >= last_week_start) & (df["date"].dt.date <= last_week_end)
+        df_current = df[mask_current]
+        df_last = df[mask_last]
+    
+        current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
+        last_summary = df_last.groupby("habit").size().reset_index(name="last_success_count")
+    
+        # Ensure every habit is represented
+        for habit in st.session_state.data["habits"].keys():
+            if habit not in current_summary["habit"].values:
+                current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
+            if habit not in last_summary["habit"].values:
+                last_summary = pd.concat([last_summary, pd.DataFrame([{"habit": habit, "last_success_count": 0}])], ignore_index=True)
+    
+        summary_compare = pd.merge(current_summary, last_summary, on="habit", how="outer").fillna(0)
+        summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
+        summary_compare["last_success_count"] = summary_compare["last_success_count"].astype(int)
+        summary_compare["goal"] = summary_compare["habit"].apply(lambda h: int(st.session_state.data["goals"].get(h, 0)))
+    
+        # Show top metrics
+        cols = st.columns(3)
+        sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
+        for idx, row in sorted_compare.iterrows():
+            habit = row["habit"]
+            goal_val = row["goal"]
+            delta_str = f"{row['current_success_count'] - row['last_success_count']:+}" if row["last_success_count"] > 0 else "N/A"
+            current_pct = (row["current_success_count"] / goal_val * 100) if goal_val > 0 else 0
+            value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
+            col = cols[idx % 3]
+            col.metric(label=habit, value=value_str, delta=delta_str)
+    
+        # Create sub-tabs for bar chart and heatmap
+        weekly_sub_tabs = st.tabs(["Progress Bar Chart", "Progress Heatmap"])
+    
+        # Bar Chart for Weekly View
+        with weekly_sub_tabs[0]:
             melt_compare = summary_compare.melt(
                 id_vars="habit", 
                 value_vars=["current_success_count", "last_success_count", "goal"],
@@ -547,8 +547,9 @@ with tab_analytics:
                 template="plotly_white"
             )
             st.plotly_chart(fig_compare, use_container_width=True)
-                    
-            # Heatmap for the current week
+    
+        # Heatmap for Weekly View
+        with weekly_sub_tabs[1]:
             week_dates = [current_week_start + datetime.timedelta(days=i) for i in range(7)]
             heatmap_data_weekly = []
             text_data_weekly = []
@@ -571,7 +572,7 @@ with tab_analytics:
                     text_row.append(text)
                 heatmap_data_weekly.append(row)
                 text_data_weekly.append(text_row)
-
+    
             fig_heatmap_weekly = go.Figure(data=go.Heatmap(
                 z=heatmap_data_weekly,
                 x=[day.strftime("%a") for day in week_dates],
@@ -591,70 +592,70 @@ with tab_analytics:
                 template="plotly_white"
             )
             st.plotly_chart(fig_heatmap_weekly, use_container_width=True)
-
-        # -----------------------------
-        # MONTHLY VIEW
-        # -----------------------------
-        elif view_option == "Monthly":
-            current_month_start = st.session_state.tracker_month
-            year = current_month_start.year
-            month = current_month_start.month
-            num_days = calendar.monthrange(year, month)[1]
-            current_month_end = datetime.date(year, month, num_days)
-
-            col_prev, col_center, col_next = st.columns([1, 2, 1])
-            with col_prev:
-                if st.button("◀ Previous Month", key="prev_month"):
-                    st.session_state.tracker_month = shift_month(current_month_start, -1)
-            with col_center:
-                st.markdown(f"### {current_month_start.strftime('%B %Y')}")
-            with col_next:
-                if st.button("Next Month ▶", key="next_month"):
-                    st.session_state.tracker_month = shift_month(current_month_start, 1)
-
-            prev_month_start = shift_month(current_month_start, -1)
-            prev_year = prev_month_start.year
-            prev_month = prev_month_start.month
-            prev_num_days = calendar.monthrange(prev_year, prev_month)[1]
-            prev_month_end = datetime.date(prev_year, prev_month, prev_num_days)
-
-            mask_current = (df["date"].dt.date >= current_month_start) & (df["date"].dt.date <= current_month_end)
-            mask_prev = (df["date"].dt.date >= prev_month_start) & (df["date"].dt.date <= prev_month_end)
-            df_current = df[mask_current]
-            df_prev = df[mask_prev]
-
-            current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
-            prev_summary = df_prev.groupby("habit").size().reset_index(name="prev_success_count")
-
-            # Ensure every habit is represented
-            for habit in st.session_state.data["habits"].keys():
-                if habit not in current_summary["habit"].values:
-                    current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
-                if habit not in prev_summary["habit"].values:
-                    prev_summary = pd.concat([prev_summary, pd.DataFrame([{"habit": habit, "prev_success_count": 0}])], ignore_index=True)
-
-            summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
-            summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
-            summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
-
-            # Approximate monthly goal by multiplying the weekly goal
-            summary_compare["goal"] = summary_compare["habit"].apply(
-                lambda h: int(st.session_state.data["goals"].get(h, 0) / 7 * num_days)
-            )
-
-            # Show top metrics
-            cols = st.columns(3)
-            sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
-            for idx, row in sorted_compare.iterrows():
-                habit = row["habit"]
-                goal_val = row["goal"]
-                delta_str = f"{row['current_success_count'] - row['prev_success_count']:+}" if row["prev_success_count"] > 0 else "N/A"
-                current_pct = (row["current_success_count"] / goal_val * 100) if goal_val > 0 else 0
-                value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
-                col = cols[idx % 3]
-                col.metric(label=habit, value=value_str, delta=delta_str)
-
-            # Bar chart comparison
+    
+    # -----------------------------
+    # MONTHLY VIEW
+    # -----------------------------
+    with analytics_tabs[1]:
+        current_month_start = st.session_state.tracker_month
+        year = current_month_start.year
+        month = current_month_start.month
+        num_days = calendar.monthrange(year, month)[1]
+        current_month_end = datetime.date(year, month, num_days)
+    
+        col_prev, col_center, col_next = st.columns([1, 2, 1])
+        with col_prev:
+            if st.button("◀ Previous Month", key="prev_month"):
+                st.session_state.tracker_month = shift_month(current_month_start, -1)
+        with col_center:
+            st.markdown(f"### {current_month_start.strftime('%B %Y')}")
+        with col_next:
+            if st.button("Next Month ▶", key="next_month"):
+                st.session_state.tracker_month = shift_month(current_month_start, 1)
+    
+        prev_month_start = shift_month(current_month_start, -1)
+        prev_year = prev_month_start.year
+        prev_month = prev_month_start.month
+        prev_num_days = calendar.monthrange(prev_year, prev_month)[1]
+        prev_month_end = datetime.date(prev_year, prev_month, prev_num_days)
+    
+        mask_current = (df["date"].dt.date >= current_month_start) & (df["date"].dt.date <= current_month_end)
+        mask_prev = (df["date"].dt.date >= prev_month_start) & (df["date"].dt.date <= prev_month_end)
+        df_current = df[mask_current]
+        df_prev = df[mask_prev]
+    
+        current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
+        prev_summary = df_prev.groupby("habit").size().reset_index(name="prev_success_count")
+    
+        for habit in st.session_state.data["habits"].keys():
+            if habit not in current_summary["habit"].values:
+                current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
+            if habit not in prev_summary["habit"].values:
+                prev_summary = pd.concat([prev_summary, pd.DataFrame([{"habit": habit, "prev_success_count": 0}])], ignore_index=True)
+    
+        summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
+        summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
+        summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
+    
+        # Approximate monthly goal by multiplying the weekly goal
+        summary_compare["goal"] = summary_compare["habit"].apply(
+            lambda h: int(st.session_state.data["goals"].get(h, 0) / 7 * num_days)
+        )
+    
+        cols = st.columns(3)
+        sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
+        for idx, row in sorted_compare.iterrows():
+            habit = row["habit"]
+            goal_val = row["goal"]
+            delta_str = f"{row['current_success_count'] - row['prev_success_count']:+}" if row["prev_success_count"] > 0 else "N/A"
+            current_pct = (row["current_success_count"] / goal_val * 100) if goal_val > 0 else 0
+            value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
+            col = cols[idx % 3]
+            col.metric(label=habit, value=value_str, delta=delta_str)
+    
+        monthly_sub_tabs = st.tabs(["Progress Bar Chart", "Progress Heatmap"])
+    
+        with monthly_sub_tabs[0]:
             melt_compare = summary_compare.melt(
                 id_vars="habit", 
                 value_vars=["current_success_count", "prev_success_count", "goal"],
@@ -680,8 +681,8 @@ with tab_analytics:
                 template="plotly_white"
             )
             st.plotly_chart(fig_compare, use_container_width=True)
-
-            # Heatmap for the current month
+    
+        with monthly_sub_tabs[1]:
             days = [datetime.date(year, month, d) for d in range(1, num_days+1)]
             heatmap_data = []
             text_data = []
@@ -704,7 +705,7 @@ with tab_analytics:
                     text_row.append(text)
                 heatmap_data.append(row)
                 text_data.append(text_row)
-
+    
             fig_heatmap = go.Figure(data=go.Heatmap(
                 z=heatmap_data,
                 x=[str(day.day) for day in days],
@@ -724,62 +725,62 @@ with tab_analytics:
                 template="plotly_white"
             )
             st.plotly_chart(fig_heatmap, use_container_width=True)
-
-        # -----------------------------
-        # YEARLY VIEW
-        # -----------------------------
-        elif view_option == "Yearly":
-            if "tracker_year" not in st.session_state:
-                st.session_state.tracker_year = today.year
-
-            selected_year = st.session_state.tracker_year
-            col_prev, col_center, col_next = st.columns([1, 2, 1])
-            with col_prev:
-                if st.button("◀ Previous Year", key="prev_year"):
-                    st.session_state.tracker_year -= 1
-            with col_center:
-                st.markdown(f"### {selected_year}")
-            with col_next:
-                if st.button("Next Year ▶", key="next_year"):
-                    st.session_state.tracker_year += 1
-
-            mask_current = (df["date"].dt.year == selected_year)
-            mask_prev = (df["date"].dt.year == (selected_year - 1))
-            df_current = df[mask_current]
-            df_prev = df[mask_prev]
-
-            current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
-            prev_summary = df_prev.groupby("habit").size().reset_index(name="prev_success_count")
-
-            # Ensure every habit is represented
-            for habit in st.session_state.data["habits"].keys():
-                if habit not in current_summary["habit"].values:
-                    current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
-                if habit not in prev_summary["habit"].values:
-                    prev_summary = pd.concat([prev_summary, pd.DataFrame([{"habit": habit, "prev_success_count": 0}])], ignore_index=True)
-
-            summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
-            summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
-            summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
-
-            days_in_year = 366 if calendar.isleap(selected_year) else 365
-            summary_compare["goal"] = summary_compare["habit"].apply(
-                lambda h: int(st.session_state.data["goals"].get(h, 0) / 7 * days_in_year)
-            )
-
-            # Show top metrics
-            cols = st.columns(3)
-            sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
-            for idx, row in sorted_compare.iterrows():
-                habit = row["habit"]
-                goal_val = row["goal"]
-                delta_str = f"{row['current_success_count'] - row['prev_success_count']:+}" if row["prev_success_count"] > 0 else "N/A"
-                current_pct = (row["current_success_count"] / goal_val * 100) if goal_val > 0 else 0
-                value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
-                col = cols[idx % 3]
-                col.metric(label=habit, value=value_str, delta=delta_str)
-
-            # Bar chart comparison
+    
+    # -----------------------------
+    # YEARLY VIEW
+    # -----------------------------
+    with analytics_tabs[2]:
+        if "tracker_year" not in st.session_state:
+            st.session_state.tracker_year = today.year
+    
+        selected_year = st.session_state.tracker_year
+        col_prev, col_center, col_next = st.columns([1, 2, 1])
+        with col_prev:
+            if st.button("◀ Previous Year", key="prev_year"):
+                st.session_state.tracker_year -= 1
+        with col_center:
+            st.markdown(f"### {selected_year}")
+        with col_next:
+            if st.button("Next Year ▶", key="next_year"):
+                st.session_state.tracker_year += 1
+    
+        mask_current = (df["date"].dt.year == selected_year)
+        mask_prev = (df["date"].dt.year == (selected_year - 1))
+        df_current = df[mask_current]
+        df_prev = df[mask_prev]
+    
+        current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
+        prev_summary = df_prev.groupby("habit").size().reset_index(name="prev_success_count")
+    
+        for habit in st.session_state.data["habits"].keys():
+            if habit not in current_summary["habit"].values:
+                current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
+            if habit not in prev_summary["habit"].values:
+                prev_summary = pd.concat([prev_summary, pd.DataFrame([{"habit": habit, "prev_success_count": 0}])], ignore_index=True)
+    
+        summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
+        summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
+        summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
+    
+        days_in_year = 366 if calendar.isleap(selected_year) else 365
+        summary_compare["goal"] = summary_compare["habit"].apply(
+            lambda h: int(st.session_state.data["goals"].get(h, 0) / 7 * days_in_year)
+        )
+    
+        cols = st.columns(3)
+        sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
+        for idx, row in sorted_compare.iterrows():
+            habit = row["habit"]
+            goal_val = row["goal"]
+            delta_str = f"{row['current_success_count'] - row['prev_success_count']:+}" if row["prev_success_count"] > 0 else "N/A"
+            current_pct = (row["current_success_count"] / goal_val * 100) if goal_val > 0 else 0
+            value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
+            col = cols[idx % 3]
+            col.metric(label=habit, value=value_str, delta=delta_str)
+    
+        yearly_sub_tabs = st.tabs(["Progress Bar Chart", "Progress Heatmap"])
+    
+        with yearly_sub_tabs[0]:
             melt_compare = summary_compare.melt(
                 id_vars="habit",
                 value_vars=["current_success_count", "prev_success_count", "goal"],
@@ -805,8 +806,8 @@ with tab_analytics:
                 template="plotly_white"
             )
             st.plotly_chart(fig_compare, use_container_width=True)
-            
-            # Heatmap by month
+    
+        with yearly_sub_tabs[1]:
             months = list(range(1, 13))
             month_names = [calendar.month_abbr[m] for m in months]
             heatmap_data = []
@@ -820,7 +821,7 @@ with tab_analytics:
                     text_row.append(f"{habit} in {calendar.month_abbr[m]} {selected_year}: {count} successes")
                 heatmap_data.append(row)
                 text_data.append(text_row)
-
+    
             fig_heatmap = go.Figure(data=go.Heatmap(
                 z=heatmap_data,
                 x=month_names,
@@ -850,15 +851,15 @@ with tab_analytics:
 # =====================================================
 with tab_journal:
     components.html(build_header_html("Pulse Journal"), height=150)
-
+    
     today = datetime.date.today()
     today_str = today.strftime("%Y-%m-%d")
     st.subheader(f"Journal Entry for {today_str}")
-
+    
     existing_entry = get_journal_entry(today_str)
     default_feeling = existing_entry.get("feeling", "") if existing_entry else ""
     default_cause = existing_entry.get("cause", "") if existing_entry else ""
-
+    
     with st.form("journal_entry_form"):
         st.write("Record your feelings and possible causes below:")
         feeling_input = st.text_area("How are you feeling today?", value=default_feeling, height=120)
@@ -874,27 +875,55 @@ with tab_journal:
                 entry["summary"] = existing_entry["summary"]
             save_journal_entry(today_str, entry)
             st.success(f"Journal entry for {today_str} saved successfully!")
-
+    
     st.markdown("---")
     st.subheader("Get Journal Summary")
-    summary_period = st.radio("Select period to summarize", ["Daily", "Weekly", "Monthly"], index=0)
-    if st.button("Generate Summary"):
-        with st.spinner("Fetching and summarizing your journal entries..."):
-            all_entries = fetch_journal_entries()
-            filtered_entries = filter_entries_by_period(all_entries, summary_period, today)
-            if not filtered_entries:
-                st.info(f"No journal entries found for the selected {summary_period.lower()} period.")
-            else:
-                entries_text = build_entries_text(filtered_entries)
-                summary = get_summary_for_entries(entries_text, summary_period)
-                st.subheader(f"{summary_period} Summary")
-                st.write(summary)
-                if summary_period == "Daily":
+    # Use tabs for Daily, Weekly, and Monthly summaries
+    journal_summary_tabs = st.tabs(["Daily", "Weekly", "Monthly"])
+    
+    with journal_summary_tabs[0]:
+        if st.button("Generate Daily Summary", key="daily_summary"):
+            with st.spinner("Fetching and summarizing your journal entries..."):
+                all_entries = fetch_journal_entries()
+                filtered_entries = filter_entries_by_period(all_entries, "Daily", today)
+                if not filtered_entries:
+                    st.info("No journal entries found for today.")
+                else:
+                    entries_text = build_entries_text(filtered_entries)
+                    summary = get_summary_for_entries(entries_text, "Daily")
+                    st.subheader("Daily Summary")
+                    st.write(summary)
                     daily_entry = get_journal_entry(today_str) or {}
                     daily_entry["summary"] = summary
                     save_journal_entry(today_str, daily_entry)
                     st.info("Daily summary has been saved to your journal entry.")
-
+    
+    with journal_summary_tabs[1]:
+        if st.button("Generate Weekly Summary", key="weekly_summary"):
+            with st.spinner("Fetching and summarizing your journal entries..."):
+                all_entries = fetch_journal_entries()
+                filtered_entries = filter_entries_by_period(all_entries, "Weekly", today)
+                if not filtered_entries:
+                    st.info("No journal entries found for this week.")
+                else:
+                    entries_text = build_entries_text(filtered_entries)
+                    summary = get_summary_for_entries(entries_text, "Weekly")
+                    st.subheader("Weekly Summary")
+                    st.write(summary)
+    
+    with journal_summary_tabs[2]:
+        if st.button("Generate Monthly Summary", key="monthly_summary"):
+            with st.spinner("Fetching and summarizing your journal entries..."):
+                all_entries = fetch_journal_entries()
+                filtered_entries = filter_entries_by_period(all_entries, "Monthly", today)
+                if not filtered_entries:
+                    st.info("No journal entries found for this month.")
+                else:
+                    entries_text = build_entries_text(filtered_entries)
+                    summary = get_summary_for_entries(entries_text, "Monthly")
+                    st.subheader("Monthly Summary")
+                    st.write(summary)
+    
     with st.expander("Show Past Journal Entries"):
         all_entries = fetch_journal_entries()
         if not all_entries:
