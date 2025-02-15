@@ -14,6 +14,7 @@ import bcrypt
 from firebase_admin import credentials, db
 import streamlit.components.v1 as components
 from cryptography.fernet import Fernet, InvalidToken
+import uuid
 
 # -------------------------------
 # SET PAGE CONFIGURATION
@@ -79,6 +80,25 @@ def get_base64_image(image_path):
     except Exception as e:
         st.error(f"Error loading image at {image_path}: {e}")
         return ""
+
+# -------------------------------
+# COOKIE MANAGER SETUP
+# -------------------------------
+from streamlit_cookies_manager import EncryptedCookieManager
+cookie_secret = st.secrets["general"]["COOKIE_SECRET"]
+cookies = EncryptedCookieManager(prefix="pulse_app", password=cookie_secret)
+
+if not cookies.ready():
+    st.stop()
+
+# Initialize login state if not already set.
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+# Check for a persistent login token in the cookies.
+if cookies.get("login_token") and not st.session_state.logged_in:
+    st.session_state.logged_in = True
+    st.session_state.username = cookies.get("username")
 
 # -------------------------------
 # HELPER: Build page header HTML
@@ -170,10 +190,13 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                 if success:
                     st.session_state.logged_in = True
                     st.session_state.username = username
-                    # We'll keep the display name in session_state but won't show it on the header
-                    st.session_state.name = display_name  
-                    # Default page name in case we need it
+                    st.session_state.name = display_name  # keep display name for later use
                     st.session_state.page = "Pulse"
+                    # Set persistent cookie upon successful login.
+                    token = str(uuid.uuid4())
+                    cookies["login_token"] = token
+                    cookies["username"] = username
+                    cookies.save()
                     st.success(f"Welcome, {display_name}!")
                 else:
                     st.error("Invalid username or password.")
@@ -307,7 +330,7 @@ def get_summary_for_entries(entries_text, period):
     prompt = (
         f"Please summarize the following journal entries for a {period.lower()} period. "
         "Focus on the emotional tone, the main feelings expressed, and possible underlying causes. "
-        "Write as if you are talking to the user."
+        "Write as if you are talking to the user. "
         "Provide a brief motivational conclusion. **Do not prepend any heading like 'Summary:'. "
         "Only return the summary text.**\n\n"
         f"{entries_text}"
@@ -741,7 +764,7 @@ with tab_analytics:
         with col_center:
             st.markdown(f"### {selected_year}")
         with col_next:
-            if st.button("Next Year ▶", key="next_year"):
+            if st.button("Next Year", key="next_year"):
                 st.session_state.tracker_year += 1
     
         mask_current = (df["date"].dt.year == selected_year)
@@ -846,9 +869,6 @@ with tab_analytics:
             )
             st.plotly_chart(fig_heatmap, use_container_width=True)
 
-# =====================================================
-# TAB: JOURNAL (Daily Journal)
-# =====================================================
 # =====================================================
 # TAB: JOURNAL (Daily Journal & Journal Summaries)
 # =====================================================
