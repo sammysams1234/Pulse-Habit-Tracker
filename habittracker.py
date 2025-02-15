@@ -1038,7 +1038,7 @@ with tab_journal:
                 st.markdown(f"**Cause:** {entry.get('cause', 'N/A')}")
                 summary_text = entry.get("summary")
                 if summary_text:
-                    st.markdown("#### Summary")
+                    st.markdown("#### Pulse AI Summary")
                     st.markdown(summary_text)
                 st.markdown("---")  # horizontal line for clarity
 
