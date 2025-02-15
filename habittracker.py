@@ -559,6 +559,9 @@ with tab_pulse:
                         habit = new_name_val
 
                     st.session_state.data["goals"][habit] = int(new_goal_val)
+    # Ensure that the 'habit_colors' key exists before assigning a new color.
+                    if "habit_colors" not in st.session_state.data:
+                        st.session_state.data["habit_colors"] = {}
                     st.session_state.data["habit_colors"][habit] = new_color_val
                     save_user_data(user_id, st.session_state.data)
                     st.success(f"Updated habit '{habit}' successfully!")
