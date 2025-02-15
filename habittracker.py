@@ -46,7 +46,7 @@ if not firebase_admin._apps:
 # -------------------------------
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 if openai.api_key is None:
-    st.warning("OpenAI API key is not set in the environment. Journal summarization will not work.")
+    st.warning("OpenAI API key is not set in the environment. Journal and task summarization will not work.")
 
 # -------------------------------
 # SETUP DATA ENCRYPTION (Fernet)
@@ -139,7 +139,8 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                 "display_name": display_name,
                 "password": hashed_pw
             }
-            initial_data = {"habits": {}, "goals": {}, "streaks": {}, "journal": {}}
+            # Also initialize an empty data blob with an added "todo" list.
+            initial_data = {"habits": {}, "goals": {}, "streaks": {}, "journal": {}, "todo": []}
             data["data"] = encrypt_json(initial_data)
             ref.set(data)
             return True
@@ -176,7 +177,18 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                 hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
                 success = register_user(username, display_name, hashed_pw)
                 if success:
-                    st.success("Account created successfully! Please switch to the Login tab to log in.")
+                    st.success("Account created successfully! Switching to Login tab...")
+                    # Automatically switch to Login tab using JavaScript.
+                    st.markdown(
+                        """
+                        <script>
+                        const tabs = window.parent.document.querySelectorAll('button[role="tab"]');
+                        if(tabs.length > 0){
+                            tabs[0].click();
+                        }
+                        </script>
+                        """, unsafe_allow_html=True
+                    )
                 else:
                     st.error("Username already exists. Please choose another.")
 
@@ -211,7 +223,7 @@ def load_user_data(user_id):
     ref = db.reference(f"users/{user_id}/data")
     encrypted = ref.get()
     if not encrypted:
-        data = {"habits": {}, "goals": {}, "streaks": {}, "journal": {}}
+        data = {"habits": {}, "goals": {}, "streaks": {}, "journal": {}, "todo": []}
         ref.set(encrypt_json(data))
         return data
     else:
@@ -336,16 +348,68 @@ def get_summary_for_entries(entries_text, period):
         "Only return the summary text.**\n\n"
         f"{entries_text}"
     )
-    if not hasattr(openai, "ChatCompletion"):
-        return ("OpenAI ChatCompletion is not available in your current openai library version. "
-                "Please run openai migrate to update your codebase or pin your openai version to <1.0.0.")
     try:
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a supportive and motivational journaling assistant."},
-                {"role": "user", "content": prompt}
-            ],
+            messages=[{"role": "system", "content": "You are a supportive and motivational journaling assistant."},
+                      {"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=250
+        )
+        summary = response.choices[0].message.content.strip()
+        return summary
+    except Exception as e:
+        return f"Error generating summary: {e}"
+
+# =====================================================
+# HELPER FUNCTIONS FOR TASKS (To Do List)
+# =====================================================
+def filter_tasks_by_period(tasks, period, today):
+    filtered = []
+    if period == "Weekly":
+        start = today - datetime.timedelta(days=today.weekday())
+        end = start + datetime.timedelta(days=6)
+    elif period == "Monthly":
+        start = today.replace(day=1)
+        end = today.replace(day=calendar.monthrange(today.year, today.month)[1])
+    elif period == "Yearly":
+        start = datetime.date(today.year, 1, 1)
+        end = datetime.date(today.year, 12, 31)
+    else:
+        return tasks
+
+    for task in tasks:
+        created = datetime.datetime.fromisoformat(task["timestamp"]).date()
+        completed_date = None
+        if task.get("completed") and task.get("completed_at"):
+            completed_date = datetime.datetime.fromisoformat(task["completed_at"]).date()
+        # If task is completed and its completion date falls in period, or if pending and created in period.
+        if task.get("completed") and completed_date and start <= completed_date <= end:
+            filtered.append(task)
+        elif not task.get("completed") and start <= created <= end:
+            filtered.append(task)
+    return filtered
+
+def get_summary_for_tasks(tasks, period):
+    if not tasks:
+        return "No tasks to summarize."
+    tasks_text = ""
+    for task in tasks:
+        status = "Completed" if task.get("completed") else "Pending"
+        date_field = task.get("completed_at") if task.get("completed") else task.get("timestamp")
+        tasks_text += f"Task: {task['task']} | Status: {status} | Date: {date_field}\n"
+    prompt = (
+        f"Please summarize the following to-do tasks for a {period.lower()} period. "
+        "Focus on which tasks were completed and which ones are still pending. "
+        "Provide actionable insights and encouragement. "
+        "Do not add any headings; only return the summary text.\n\n" +
+        tasks_text
+    )
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "system", "content": "You are a helpful productivity assistant."},
+                      {"role": "user", "content": prompt}],
             temperature=0.7,
             max_tokens=250
         )
@@ -374,9 +438,27 @@ for habit in st.session_state.data["habits"]:
     update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
 
 # =====================================================
-# CREATE TOP TABS
+# DISPLAY TOP-RIGHT: LOGGED IN USER INFO & LOGOUT BUTTON
 # =====================================================
-tab_pulse, tab_analytics, tab_journal = st.tabs(["Weekly Habit Tracker 📆", "Analytics 📊", "Journal 🗒️"])
+col_left, col_right = st.columns([3, 1])
+with col_right:
+    st.markdown(f"**Logged in as {st.session_state.username}**")
+    if st.button("Log Out"):
+        cookies.delete("login_token")
+        cookies.delete("username")
+        cookies.save()
+        st.session_state.logged_in = False
+        st.experimental_rerun()
+
+# =====================================================
+# CREATE TOP TABS (Added new "To Do List" tab)
+# =====================================================
+tab_pulse, tab_analytics, tab_journal, tab_todo = st.tabs([
+    "Weekly Habit Tracker 📆", 
+    "Analytics 📊", 
+    "Journal 🗒️", 
+    "To Do List ✅"
+])
 
 # =====================================================
 # TAB: PULSE (Main Habit Tracker)
@@ -938,3 +1020,83 @@ with tab_journal:
                 if summary_text:
                     st.markdown("#### <u>Summary</u>", unsafe_allow_html=True)
                     st.markdown(summary_text)
+
+# =====================================================
+# TAB: TO DO LIST (Task Management & GPT Summaries)
+# =====================================================
+with tab_todo:
+    components.html(build_header_html("To Do List"), height=150)
+    st.subheader("Your To-Do List")
+    
+    # Add new task input.
+    new_task = st.text_input("Enter a new task", key="new_todo_task")
+    if st.button("Add Task"):
+        if new_task.strip() == "":
+            st.error("Please enter a valid task.")
+        else:
+            if "todo" not in st.session_state.data:
+                st.session_state.data["todo"] = []
+            task_obj = {
+                "id": str(uuid.uuid4()),
+                "task": new_task.strip(),
+                "completed": False,
+                "timestamp": datetime.datetime.now().isoformat(),
+                "completed_at": None
+            }
+            st.session_state.data["todo"].append(task_obj)
+            save_user_data(user_id, st.session_state.data)
+            st.success("Task added successfully!")
+    
+    st.markdown("---")
+    
+    # List existing tasks.
+    if "todo" in st.session_state.data and st.session_state.data["todo"]:
+        for task in st.session_state.data["todo"]:
+            col1, col2, col3 = st.columns([6, 1, 1])
+            # Checkbox for marking complete.
+            new_completed = col1.checkbox(task["task"], value=task.get("completed", False), key=task["id"])
+            if new_completed != task.get("completed", False):
+                task["completed"] = new_completed
+                if new_completed:
+                    task["completed_at"] = datetime.datetime.now().isoformat()
+                else:
+                    task["completed_at"] = None
+                save_user_data(user_id, st.session_state.data)
+            # Delete button.
+            if col2.button("Delete", key="del_" + task["id"]):
+                st.session_state.data["todo"].remove(task)
+                save_user_data(user_id, st.session_state.data)
+                st.experimental_rerun()
+    else:
+        st.info("No tasks added yet.")
+    
+    st.markdown("---")
+    st.subheader("Task Summaries")
+    summary_tabs = st.tabs(["Weekly Summary", "Monthly Summary", "Yearly Summary"])
+    
+    with summary_tabs[0]:
+        if st.button("Generate Weekly Task Summary", key="weekly_todo_summary"):
+            tasks_filtered = filter_tasks_by_period(st.session_state.data["todo"], "Weekly", today)
+            if not tasks_filtered:
+                st.info("No tasks found for this week.")
+            else:
+                summary = get_summary_for_tasks(tasks_filtered, "Weekly")
+                st.write(summary)
+    
+    with summary_tabs[1]:
+        if st.button("Generate Monthly Task Summary", key="monthly_todo_summary"):
+            tasks_filtered = filter_tasks_by_period(st.session_state.data["todo"], "Monthly", today)
+            if not tasks_filtered:
+                st.info("No tasks found for this month.")
+            else:
+                summary = get_summary_for_tasks(tasks_filtered, "Monthly")
+                st.write(summary)
+    
+    with summary_tabs[2]:
+        if st.button("Generate Yearly Task Summary", key="yearly_todo_summary"):
+            tasks_filtered = filter_tasks_by_period(st.session_state.data["todo"], "Yearly", today)
+            if not tasks_filtered:
+                st.info("No tasks found for this year.")
+            else:
+                summary = get_summary_for_tasks(tasks_filtered, "Yearly")
+                st.write(summary)
