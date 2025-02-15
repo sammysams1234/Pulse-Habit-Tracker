@@ -1081,15 +1081,9 @@ with tab_todo:
 
         st.markdown("---")
         if "todo" in st.session_state.data and st.session_state.data["todo"]:
-            # Iterate over tasks and display checkbox with task text (with strikethrough if completed)
             for task in st.session_state.data["todo"]:
-                col_checkbox, col_text, col_delete = st.columns([1, 6, 1])
-                # Checkbox without a label
-                new_completed = col_checkbox.checkbox("", value=task.get("completed", False), key=task["id"])
-                # If completed, show the task text with a strikethrough using the <s> tag.
-                display_text = f"<s>{task['task']}</s>" if task.get("completed", False) else task["task"]
-                col_text.markdown(display_text, unsafe_allow_html=True)
-
+                col1, col2, col3 = st.columns([6, 1, 1])
+                new_completed = col1.checkbox(task["task"], value=task.get("completed", False), key=task["id"])
                 if new_completed != task.get("completed", False):
                     task["completed"] = new_completed
                     if new_completed:
@@ -1098,7 +1092,7 @@ with tab_todo:
                         task["completed_at"] = None
                     save_user_data(user_id, st.session_state.data)
 
-                if col_delete.button("Delete", key="del_" + task["id"]):
+                if col2.button("Delete", key="del_" + task["id"]):
                     st.session_state.data["todo"].remove(task)
                     save_user_data(user_id, st.session_state.data)
                     if hasattr(st, "experimental_rerun"):
@@ -1151,6 +1145,7 @@ with tab_todo:
 
     # ------------------- COMPLETED TASKS BY DATE -------------------
     with todo_main_tabs[2]:
+
         completed_tasks = [
             task for task in st.session_state.data["todo"] 
             if task.get("completed") and task.get("completed_at")
