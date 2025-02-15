@@ -1010,7 +1010,6 @@ with tab_journal:
                     else:
                         entries_text = build_entries_text(filtered_entries)
                         summary = get_summary_for_entries(entries_text, "Weekly")
-                        st.subheader("Weekly Summary")
                         st.write(summary)
 
         # --- MONTHLY SUMMARY ---
@@ -1024,7 +1023,6 @@ with tab_journal:
                     else:
                         entries_text = build_entries_text(filtered_entries)
                         summary = get_summary_for_entries(entries_text, "Monthly")
-                        st.subheader("Monthly Summary")
                         st.write(summary)
 
     # ---------------- PAST JOURNAL ENTRIES ----------------
@@ -1127,7 +1125,6 @@ with tab_todo:
                     else:
                         grouped_text = get_grouped_tasks_summary(tasks_filtered)
                         summary = get_ai_tasks_summary(grouped_text, "Weekly")
-                        st.subheader("Weekly Task Summary")
                         st.write(summary)
 
         # --- MONTHLY TASK SUMMARY ---
@@ -1140,7 +1137,6 @@ with tab_todo:
                     else:
                         grouped_text = get_grouped_tasks_summary(tasks_filtered)
                         summary = get_ai_tasks_summary(grouped_text, "Monthly")
-                        st.subheader("Monthly Task Summary")
                         st.write(summary)
 
     # ------------------- COMPLETED TASKS BY DATE -------------------
