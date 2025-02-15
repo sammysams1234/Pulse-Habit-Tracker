@@ -849,81 +849,97 @@ with tab_analytics:
 # =====================================================
 # TAB: JOURNAL (Daily Journal)
 # =====================================================
+# =====================================================
+# TAB: JOURNAL (Daily Journal & Journal Summaries)
+# =====================================================
 with tab_journal:
     components.html(build_header_html("Pulse Journal"), height=150)
     
-    today = datetime.date.today()
-    today_str = today.strftime("%Y-%m-%d")
-    st.subheader(f"Journal Entry for {today_str}")
+    # Create two main tabs: one for Journal Entry and one for Journal Summary
+    journal_main_tabs = st.tabs(["Journal Entry", "Journal Summary"])
     
-    existing_entry = get_journal_entry(today_str)
-    default_feeling = existing_entry.get("feeling", "") if existing_entry else ""
-    default_cause = existing_entry.get("cause", "") if existing_entry else ""
+    # -----------------------------
+    # Journal Entry Tab
+    # -----------------------------
+    with journal_main_tabs[0]:
+        today = datetime.date.today()
+        today_str = today.strftime("%Y-%m-%d")
+        st.subheader(f"Journal Entry for {today_str}")
     
-    with st.form("journal_entry_form"):
-        st.write("Record your feelings and possible causes below:")
-        feeling_input = st.text_area("How are you feeling today?", value=default_feeling, height=120)
-        cause_input = st.text_area("What do you think is causing these feelings?", value=default_cause, height=120)
-        submitted = st.form_submit_button("Save Journal Entry")
-        if submitted:
-            entry = {
-                "feeling": feeling_input,
-                "cause": cause_input,
-                "timestamp": datetime.datetime.now().isoformat()
-            }
-            if existing_entry and "summary" in existing_entry:
-                entry["summary"] = existing_entry["summary"]
-            save_journal_entry(today_str, entry)
-            st.success(f"Journal entry for {today_str} saved successfully!")
+        existing_entry = get_journal_entry(today_str)
+        default_feeling = existing_entry.get("feeling", "") if existing_entry else ""
+        default_cause = existing_entry.get("cause", "") if existing_entry else ""
     
-    st.markdown("---")
-    st.subheader("Get Journal Summary")
-    # Use tabs for Daily, Weekly, and Monthly summaries
-    journal_summary_tabs = st.tabs(["Daily", "Weekly", "Monthly"])
+        with st.form("journal_entry_form"):
+            st.write("Record your feelings and possible causes below:")
+            feeling_input = st.text_area("How are you feeling today?", value=default_feeling, height=120)
+            cause_input = st.text_area("What do you think is causing these feelings?", value=default_cause, height=120)
+            submitted = st.form_submit_button("Save Journal Entry")
+            if submitted:
+                entry = {
+                    "feeling": feeling_input,
+                    "cause": cause_input,
+                    "timestamp": datetime.datetime.now().isoformat()
+                }
+                if existing_entry and "summary" in existing_entry:
+                    entry["summary"] = existing_entry["summary"]
+                save_journal_entry(today_str, entry)
+                st.success(f"Journal entry for {today_str} saved successfully!")
     
-    with journal_summary_tabs[0]:
-        if st.button("Generate Daily Summary", key="daily_summary"):
-            with st.spinner("Fetching and summarizing your journal entries..."):
-                all_entries = fetch_journal_entries()
-                filtered_entries = filter_entries_by_period(all_entries, "Daily", today)
-                if not filtered_entries:
-                    st.info("No journal entries found for today.")
-                else:
-                    entries_text = build_entries_text(filtered_entries)
-                    summary = get_summary_for_entries(entries_text, "Daily")
-                    st.subheader("Daily Summary")
-                    st.write(summary)
-                    daily_entry = get_journal_entry(today_str) or {}
-                    daily_entry["summary"] = summary
-                    save_journal_entry(today_str, daily_entry)
-                    st.info("Daily summary has been saved to your journal entry.")
+    # -----------------------------
+    # Journal Summary Tab
+    # -----------------------------
+    with journal_main_tabs[1]:
+        st.subheader("Get Journal Summary")
+        # Create sub-tabs for Daily, Weekly, and Monthly summaries
+        journal_summary_tabs = st.tabs(["Daily", "Weekly", "Monthly"])
     
-    with journal_summary_tabs[1]:
-        if st.button("Generate Weekly Summary", key="weekly_summary"):
-            with st.spinner("Fetching and summarizing your journal entries..."):
-                all_entries = fetch_journal_entries()
-                filtered_entries = filter_entries_by_period(all_entries, "Weekly", today)
-                if not filtered_entries:
-                    st.info("No journal entries found for this week.")
-                else:
-                    entries_text = build_entries_text(filtered_entries)
-                    summary = get_summary_for_entries(entries_text, "Weekly")
-                    st.subheader("Weekly Summary")
-                    st.write(summary)
+        with journal_summary_tabs[0]:
+            if st.button("Generate Daily Summary", key="daily_summary"):
+                with st.spinner("Fetching and summarizing your journal entries..."):
+                    all_entries = fetch_journal_entries()
+                    filtered_entries = filter_entries_by_period(all_entries, "Daily", today)
+                    if not filtered_entries:
+                        st.info("No journal entries found for today.")
+                    else:
+                        entries_text = build_entries_text(filtered_entries)
+                        summary = get_summary_for_entries(entries_text, "Daily")
+                        st.subheader("Daily Summary")
+                        st.write(summary)
+                        daily_entry = get_journal_entry(today_str) or {}
+                        daily_entry["summary"] = summary
+                        save_journal_entry(today_str, daily_entry)
+                        st.info("Daily summary has been saved to your journal entry.")
     
-    with journal_summary_tabs[2]:
-        if st.button("Generate Monthly Summary", key="monthly_summary"):
-            with st.spinner("Fetching and summarizing your journal entries..."):
-                all_entries = fetch_journal_entries()
-                filtered_entries = filter_entries_by_period(all_entries, "Monthly", today)
-                if not filtered_entries:
-                    st.info("No journal entries found for this month.")
-                else:
-                    entries_text = build_entries_text(filtered_entries)
-                    summary = get_summary_for_entries(entries_text, "Monthly")
-                    st.subheader("Monthly Summary")
-                    st.write(summary)
+        with journal_summary_tabs[1]:
+            if st.button("Generate Weekly Summary", key="weekly_summary"):
+                with st.spinner("Fetching and summarizing your journal entries..."):
+                    all_entries = fetch_journal_entries()
+                    filtered_entries = filter_entries_by_period(all_entries, "Weekly", today)
+                    if not filtered_entries:
+                        st.info("No journal entries found for this week.")
+                    else:
+                        entries_text = build_entries_text(filtered_entries)
+                        summary = get_summary_for_entries(entries_text, "Weekly")
+                        st.subheader("Weekly Summary")
+                        st.write(summary)
     
+        with journal_summary_tabs[2]:
+            if st.button("Generate Monthly Summary", key="monthly_summary"):
+                with st.spinner("Fetching and summarizing your journal entries..."):
+                    all_entries = fetch_journal_entries()
+                    filtered_entries = filter_entries_by_period(all_entries, "Monthly", today)
+                    if not filtered_entries:
+                        st.info("No journal entries found for this month.")
+                    else:
+                        entries_text = build_entries_text(filtered_entries)
+                        summary = get_summary_for_entries(entries_text, "Monthly")
+                        st.subheader("Monthly Summary")
+                        st.write(summary)
+    
+    # -----------------------------
+    # Expander: Show Past Journal Entries
+    # -----------------------------
     with st.expander("Show Past Journal Entries"):
         all_entries = fetch_journal_entries()
         if not all_entries:
