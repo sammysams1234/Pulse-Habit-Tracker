@@ -475,7 +475,7 @@ for habit in st.session_state.data["habits"]:
 top_col_left, top_col_right = st.columns([0.8, 0.2])
 with top_col_right:
     st.markdown(f"**Logged in as {user_id}**")
-    if st.button("I quit"):
+    if st.button("Logout"):
         st.session_state.logged_in = False
         cookies["login_token"] = ""
         cookies["username"] = ""
