@@ -1051,12 +1051,12 @@ with tab_journal:
 # TAB: TO DO LIST
 # =====================================================
 with tab_todo:
-    components.html(build_header_html("Pulse To-Do"), height=150)
+    components.html(build_header_html("Pulse To-Do List"), height=150)
 
     #  1) Tasks
     #  2) Completed Task Summary
     #  3) Completed Tasks by Date
-    todo_main_tabs = st.tabs(["Tasks", "Completed Task Summary", "Completed Tasks Breakdown"])
+    todo_main_tabs = st.tabs(["To-Do List", "Completed Task Summary", "Completed Tasks Breakdown"])
 
     # ------------------- TASKS -------------------
     with todo_main_tabs[0]:
