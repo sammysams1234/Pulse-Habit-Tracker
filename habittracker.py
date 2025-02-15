@@ -491,7 +491,7 @@ with top_col_right:
 tab_pulse, tab_analytics, tab_journal, tab_todo = st.tabs([
     "Weekly Habit Tracker 📆", 
     "Analytics 📊", 
-    "Well Being Journal 🗒️",
+    "Well-Being Journal 🗒️",
     "To-Do List ✅"
 ])
 
