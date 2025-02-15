@@ -1070,8 +1070,6 @@ with tab_todo:
                     st.session_state.data["todo"].append(task_obj)
                     save_user_data(user_id, st.session_state.data)
                     st.success("Task added successfully!")
-            # Clear the input field after submission:
-                    st.session_state["new_todo_task"] = ""
                     if hasattr(st, "experimental_rerun"):
                         st.experimental_rerun()
 
