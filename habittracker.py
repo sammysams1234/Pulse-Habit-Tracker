@@ -171,7 +171,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                 hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
                 success = register_user(username, display_name, hashed_pw)
                 if success:
-                    st.success("Account created successfully! Switching to Login tab...")
+                    st.success("Account created successfully! Please click the Login tab to login...")
                     st.markdown(
                         """
                         <script>
@@ -519,7 +519,9 @@ with tab_pulse:
                     save_user_data(user_id, st.session_state.data)
                     st.success(f"Habit '{habit}' removed successfully!")
         else:
-            st.info("No habits available yet.")
+            st.info("You currently have no habits you are tracking, please click on Manage Habits to add them!")
+            
+    # Check if there are habits to display the tracker grid
     if st.session_state.data["habits"]:
         week_start = today - datetime.timedelta(days=today.weekday())
         week_dates = [week_start + datetime.timedelta(days=i) for i in range(7)]
@@ -554,6 +556,9 @@ with tab_pulse:
             row_cols[8].markdown(f"**{current_streak}**")
             row_cols[9].markdown(f"**{longest_streak}**")
         st.markdown('</div>', unsafe_allow_html=True)
+    else:
+        # If there are no habits, display the same friendly message here too.
+        st.info("You currently have no habits you are tracking, please click on Manage Habits to add them!")
 
 # =====================================================
 # TAB: ANALYTICS (Habit Tracking Analytics)
