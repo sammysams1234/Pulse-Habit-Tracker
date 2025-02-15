@@ -427,37 +427,61 @@ def get_summary_for_tasks(tasks, period):
         return f"Error generating summary: {e}"
 
 # -------------------------------
-# NEW HELPER FUNCTION FOR TASK GROUPING
+# NEW HELPER FUNCTION FOR TASK AI SUMMARY
+# -------------------------------
+def get_ai_tasks_summary(grouped_text, period):
+    """
+    Using the grouped tasks text (showing tasks completed on each date),
+    send a prompt to OpenAI to generate an encouraging, motivational summary.
+    """
+    if not grouped_text.strip():
+        return f"No tasks completed this {period.lower()}."
+    
+    prompt = (
+        f"Based on the following log of tasks completed during the {period.lower()} period, "
+        "please provide a summary that highlights what was accomplished and offers an encouraging message. "
+        "The log is formatted with each date followed by a list of tasks completed on that day. "
+        "Only return the summary text without any additional formatting or headings.\n\n"
+        f"{grouped_text}"
+    )
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a motivational productivity assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=250
+        )
+        summary = response.choices[0].message.content.strip()
+        return summary
+    except Exception as e:
+        return f"Error generating summary: {e}"
+
+# -------------------------------
+# HELPER FUNCTION TO GROUP TASKS BY COMPLETION DATE
 # -------------------------------
 def get_grouped_tasks_summary(tasks):
     """
-    Group completed tasks by the date they were ticked off and return a summary text.
+    Group completed tasks by the date they were ticked off and return a formatted text.
     """
     if not tasks:
-        return "No tasks completed in this period."
+        return ""
     
     grouped_tasks = {}
     for task in tasks:
-        # Only include tasks that are marked completed and have a completion timestamp.
         if task.get("completed") and task.get("completed_at"):
             try:
-                # Parse the completed_at timestamp and get just the date.
                 completed_date = datetime.datetime.fromisoformat(task["completed_at"]).date()
             except Exception:
                 continue
             date_str = completed_date.strftime("%Y-%m-%d")
             grouped_tasks.setdefault(date_str, []).append(task["task"])
     
-    if not grouped_tasks:
-        return "No tasks completed in this period."
-    
     summary_text = ""
-    # Sort dates in reverse (most recent first)
     for date_str in sorted(grouped_tasks.keys(), reverse=True):
-        summary_text += f"**Tasks completed on {date_str}:**\n"
-        for task_desc in grouped_tasks[date_str]:
-            summary_text += f"- {task_desc}\n"
-        summary_text += "\n"
+        summary_text += f"Tasks completed on {date_str}: " + ", ".join(grouped_tasks[date_str]) + "\n"
     return summary_text
 
 # =====================================================
@@ -1130,41 +1154,46 @@ with tab_todo:
             st.info("No tasks added yet.")
 
     # ---------------------------
-    # Sub-Tab 2: Task Summary
+    # Sub-Tab 2: Task Summary (Using AI)
     # ---------------------------
     with todo_main_tabs[1]:
         st.subheader("Get Task Summary")
         summary_tabs = st.tabs(["Weekly", "Monthly", "Yearly"])
 
         with summary_tabs[0]:
-            # Weekly Summary
             if st.button("Generate Weekly Task Summary", key="weekly_todo_summary"):
                 with st.spinner("Generating your weekly task summary..."):
                     tasks_filtered = filter_tasks_by_period(st.session_state.data["todo"], "Weekly", today)
                     if not tasks_filtered:
                         st.info("No tasks completed this week.")
                     else:
-                        summary = get_grouped_tasks_summary(tasks_filtered)
-                        st.markdown(summary)
+                        # Group tasks by completion date.
+                        grouped_text = get_grouped_tasks_summary(tasks_filtered)
+                        # Use AI to summarize the grouped tasks.
+                        summary = get_ai_tasks_summary(grouped_text, "Weekly")
+                        st.subheader("Weekly Task Summary")
+                        st.write(summary)
 
         with summary_tabs[1]:
-            # Monthly Summary
             if st.button("Generate Monthly Task Summary", key="monthly_todo_summary"):
                 with st.spinner("Generating your monthly task summary..."):
                     tasks_filtered = filter_tasks_by_period(st.session_state.data["todo"], "Monthly", today)
                     if not tasks_filtered:
                         st.info("No tasks completed this month.")
                     else:
-                        summary = get_grouped_tasks_summary(tasks_filtered)
-                        st.markdown(summary)
+                        grouped_text = get_grouped_tasks_summary(tasks_filtered)
+                        summary = get_ai_tasks_summary(grouped_text, "Monthly")
+                        st.subheader("Monthly Task Summary")
+                        st.write(summary)
 
         with summary_tabs[2]:
-            # Yearly Summary
             if st.button("Generate Yearly Task Summary", key="yearly_todo_summary"):
                 with st.spinner("Generating your yearly task summary..."):
                     tasks_filtered = filter_tasks_by_period(st.session_state.data["todo"], "Yearly", today)
                     if not tasks_filtered:
                         st.info("No tasks completed this year.")
                     else:
-                        summary = get_grouped_tasks_summary(tasks_filtered)
-                        st.markdown(summary)
+                        grouped_text = get_grouped_tasks_summary(tasks_filtered)
+                        summary = get_ai_tasks_summary(grouped_text, "Yearly")
+                        st.subheader("Yearly Task Summary")
+                        st.write(summary)
