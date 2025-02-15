@@ -352,7 +352,7 @@ for habit in st.session_state.data["habits"]:
 # =====================================================
 # CREATE TOP TABS
 # =====================================================
-tab_pulse, tab_analytics, tab_journal = st.tabs(["Pulse", "Analytics", "Journal"])
+tab_pulse, tab_analytics, tab_journal = st.tabs(["Weekly Habit Tracker", "Analytics", "Journal"])
 
 # =====================================================
 # TAB: PULSE (Main Habit Tracker)
