@@ -1117,7 +1117,6 @@ with tab_todo:
 
     # ------------------- COMPLETED TASK SUMMARY -------------------
     with todo_main_tabs[1]:
-        st.subheader("Generate Completed Task Summaries")
         summary_tabs = st.tabs(["Weekly", "Monthly"])
 
         # --- WEEKLY TASK SUMMARY ---
