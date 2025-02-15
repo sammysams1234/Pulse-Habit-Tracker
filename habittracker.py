@@ -997,7 +997,6 @@ with tab_journal:
 
     # ---------------- JOURNAL SUMMARY ----------------
     with journal_main_tabs[1]:
-        st.subheader("Generate Journal Summary")
         journal_summary_tabs = st.tabs(["Weekly", "Monthly"])
 
         # --- WEEKLY SUMMARY ---
@@ -1030,7 +1029,7 @@ with tab_journal:
 
     # ---------------- PAST JOURNAL ENTRIES ----------------
     with journal_main_tabs[2]:
-        st.subheader("Past Journal Entries")
+        st.subheader("Journal Entries")
         all_entries = fetch_journal_entries()
         if not all_entries:
             st.info("No journal entries recorded yet.")
