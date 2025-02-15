@@ -950,7 +950,7 @@ with tab_analytics:
 # TAB: JOURNAL (Well Being Journal)
 # =====================================================
 with tab_journal:
-    components.html(build_header_html("Pulse Journal"), height=150)
+    components.html(build_header_html("Pulse Well-Being Journal"), height=150)
 
     #  1) Journal Entry
     #  2) Journal Summary
