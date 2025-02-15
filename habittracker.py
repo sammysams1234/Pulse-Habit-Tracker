@@ -524,11 +524,12 @@ with tab_pulse:
                 update_streaks_for_habit(user_id, new_habit, st.session_state.data["habits"][new_habit], today)
                 save_user_data(user_id, st.session_state.data)
                 st.success(f"Habit '{new_habit}' added successfully!")
-                # Clear the input fields and re-run the app
+                # Clear the input fields and re-run if possible
                 st.session_state["new_habit_input"] = ""
                 st.session_state["new_goal_input"] = 1
                 st.session_state["new_color_input"] = "#000000"
-                st.experimental_rerun()
+                if hasattr(st, "experimental_rerun"):
+                    st.experimental_rerun()
 
         st.subheader("Manage Habits")
         if st.session_state.data["habits"]:
@@ -1049,7 +1050,7 @@ with tab_todo:
     # ------------------- TASKS -------------------
     with todo_main_tabs[0]:
         st.subheader("Your To-Do List")
-        # Wrap the new task input in a form so that after submission the input resets
+        # Use a form so the input clears automatically on submission
         with st.form("todo_form"):
             new_task = st.text_input("Enter a new task", key="new_todo_task")
             submit_task = st.form_submit_button("Add Task")
@@ -1069,7 +1070,8 @@ with tab_todo:
                     st.session_state.data["todo"].append(task_obj)
                     save_user_data(user_id, st.session_state.data)
                     st.success("Task added successfully!")
-                    st.experimental_rerun()
+                    if hasattr(st, "experimental_rerun"):
+                        st.experimental_rerun()
 
         st.markdown("---")
         if "todo" in st.session_state.data and st.session_state.data["todo"]:
