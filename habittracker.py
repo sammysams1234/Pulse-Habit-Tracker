@@ -391,7 +391,7 @@ with tab_pulse:
                 if col3.button("Update", key=f"update_goal_{habit}"):
                     st.session_state.data["goals"][habit] = int(new_goal_val)
                     save_user_data(user_id, st.session_state.data)
-                    st.success(f"Updated goal for '{habit}' to {new_goal_val}!")
+                    st.success(f"Updated weekly goal for '{habit}' to {new_goal_val}!")
                 if col4.button("Remove", key=f"remove_{habit}"):
                     st.session_state.data["habits"].pop(habit, None)
                     st.session_state.data["goals"].pop(habit, None)
