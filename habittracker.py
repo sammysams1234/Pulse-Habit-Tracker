@@ -1016,7 +1016,7 @@ with tab_journal:
 
         # --- MONTHLY SUMMARY ---
         with journal_summary_tabs[1]:
-            if st.button("Generate Monthly Summary", key="monthly_summary"):
+            if st.button("Generate Monthly Well-Being Summary", key="monthly_summary"):
                 with st.spinner("Fetching and summarizing your journal entries..."):
                     all_entries = fetch_journal_entries()
                     filtered_entries = filter_entries_by_period(all_entries, "Monthly", today)
