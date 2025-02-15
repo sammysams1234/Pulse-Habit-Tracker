@@ -94,11 +94,9 @@ cookies = EncryptedCookieManager(prefix="pulse_app", password=cookie_secret)
 if not cookies.ready():
     st.stop()
 
-# Initialize login state if not already set.
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
-# Check for a persistent login token.
 if cookies.get("login_token") and not st.session_state.logged_in:
     st.session_state.logged_in = True
     st.session_state.username = cookies.get("username")
@@ -128,18 +126,16 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     """
     st.markdown(header_html, unsafe_allow_html=True)
 
-    # --- Helper Functions for Firebase User Management ---
     def register_user(username, display_name, hashed_pw):
         ref = db.reference("users/" + username)
         data = ref.get() or {}
         if "credentials" in data:
-            return False  # User already exists.
+            return False
         else:
             data["credentials"] = {
                 "display_name": display_name,
                 "password": hashed_pw
             }
-            # Also initialize an empty data blob with an added "todo" list.
             initial_data = {"habits": {}, "goals": {}, "streaks": {}, "journal": {}, "todo": []}
             data["data"] = encrypt_json(initial_data)
             ref.set(data)
@@ -158,7 +154,6 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
             else:
                 return False, None
 
-    # --- Create Tabs for Login and Registration ---
     tab_login, tab_register = st.tabs(["Login", "Register"])
 
     with tab_register:
@@ -178,7 +173,6 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                 success = register_user(username, display_name, hashed_pw)
                 if success:
                     st.success("Account created successfully! Switching to Login tab...")
-                    # Automatically switch to Login tab using JavaScript.
                     st.markdown(
                         """
                         <script>
@@ -214,7 +208,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                     st.success(f"Welcome, {display_name}!")
                 else:
                     st.error("Invalid username or password.")
-    st.stop()  # Stop execution until the user logs in.
+    st.stop()
 
 # =====================================================
 # HELPER FUNCTIONS FOR ENCRYPTED USER DATA
@@ -250,7 +244,6 @@ def shift_month(date_obj, delta):
 def compute_current_streak(habit_data, today):
     streak = 0
     d = today
-    # If today's date isn't in the habit data, skip it and go to yesterday
     if d.strftime("%Y-%m-%d") not in habit_data:
         d -= datetime.timedelta(days=1)
     while True:
@@ -263,11 +256,7 @@ def compute_current_streak(habit_data, today):
     return streak
 
 def compute_longest_streak(habit_data, today):
-    dates = [
-        datetime.datetime.strptime(d_str, "%Y-%m-%d").date()
-        for d_str in habit_data 
-        if datetime.datetime.strptime(d_str, "%Y-%m-%d").date() <= today
-    ]
+    dates = [datetime.datetime.strptime(d_str, "%Y-%m-%d").date() for d_str in habit_data if datetime.datetime.strptime(d_str, "%Y-%m-%d").date() <= today]
     if not dates:
         return 0
     start = min(dates)
@@ -355,8 +344,10 @@ def get_summary_for_entries(entries_text, period):
     try:
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "system", "content": "You are a supportive and motivational journaling assistant."},
-                      {"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": "You are a supportive and motivational journaling assistant."},
+                {"role": "user", "content": prompt}
+            ],
             temperature=0.7,
             max_tokens=250
         )
@@ -369,8 +360,6 @@ def get_summary_for_entries(entries_text, period):
 # TASK FUNCTIONS (To Do List)
 # =====================================================
 def filter_tasks_by_period(tasks, period, today):
-    """Return tasks that fall into the requested period 
-       (Weekly, Monthly, or Yearly) based on creation or completion date."""
     filtered = []
     if period == "Weekly":
         start = today - datetime.timedelta(days=today.weekday())
@@ -424,14 +413,7 @@ def get_summary_for_tasks(tasks, period):
     except Exception as e:
         return f"Error generating summary: {e}"
 
-# -------------------------------
-# NEW HELPER FUNCTION FOR TASK AI SUMMARY
-# -------------------------------
 def get_ai_tasks_summary(grouped_text, period):
-    """
-    Using the grouped tasks text (showing tasks completed on each date),
-    send a prompt to OpenAI to generate an encouraging, motivational summary.
-    """
     if not grouped_text.strip():
         return f"No tasks completed this {period.lower()}."
     
@@ -457,13 +439,7 @@ def get_ai_tasks_summary(grouped_text, period):
     except Exception as e:
         return f"Error generating summary: {e}"
 
-# -------------------------------
-# HELPER FUNCTION TO GROUP TASKS BY COMPLETION DATE
-# -------------------------------
 def get_grouped_tasks_summary(tasks):
-    """
-    Group completed tasks by the date they were ticked off and return a formatted text.
-    """
     if not tasks:
         return ""
     
@@ -767,9 +743,7 @@ with tab_analytics:
         summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
-        summary_compare["goal"] = summary_compare["habit"].apply(
-            lambda h: int(st.session_state.data["goals"].get(h, 0) / 7 * num_days)
-        )
+        summary_compare["goal"] = summary_compare["habit"].apply(lambda h: int(st.session_state.data["goals"].get(h, 0) / 7 * num_days))
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
         for idx, row in sorted_compare.iterrows():
@@ -811,6 +785,9 @@ with tab_analytics:
             days = [datetime.date(year, month, d) for d in range(1, num_days+1)]
             heatmap_data = []
             text_data = []
+            # Ensure df_current["date"] is datetime
+            if not df_current.empty:
+                df_current["date"] = pd.to_datetime(df_current["date"], errors="coerce")
             for habit in st.session_state.data["habits"].keys():
                 row = []
                 text_row = []
@@ -844,8 +821,8 @@ with tab_analytics:
                 ygap=3
             ))
             fig_heatmap.update_layout(
-                xaxis=dict(showgrid=False), 
-                yaxis=dict(showgrid=False), 
+                xaxis=dict(showgrid=False),
+                yaxis=dict(showgrid=False),
                 template="plotly_white"
             )
             st.plotly_chart(fig_heatmap, use_container_width=True, key="monthly_heatmap_chart")
@@ -882,9 +859,7 @@ with tab_analytics:
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
         days_in_year = 366 if calendar.isleap(selected_year) else 365
-        summary_compare["goal"] = summary_compare["habit"].apply(
-            lambda h: int(st.session_state.data["goals"].get(h, 0) / 7 * days_in_year)
-        )
+        summary_compare["goal"] = summary_compare["habit"].apply(lambda h: int(st.session_state.data["goals"].get(h, 0) / 7 * days_in_year))
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
         for idx, row in sorted_compare.iterrows():
@@ -927,6 +902,8 @@ with tab_analytics:
             month_names = [calendar.month_abbr[m] for m in months]
             heatmap_data = []
             text_data = []
+            if not df_current.empty:
+                df_current["date"] = pd.to_datetime(df_current["date"], errors="coerce")
             for habit in st.session_state.data["habits"].keys():
                 row = []
                 text_row = []
@@ -943,10 +920,10 @@ with tab_analytics:
                 text=text_data,
                 hoverinfo="text",
                 colorscale=[
-                    [0.0, "#eaeaea"], 
-                    [0.25, "#c7e9c0"], 
-                    [0.5, "#a1d99b"], 
-                    [0.75, "#74c476"], 
+                    [0.0, "#eaeaea"],
+                    [0.25, "#c7e9c0"],
+                    [0.5, "#a1d99b"],
+                    [0.75, "#74c476"],
                     [1.0, "#4BB543"]
                 ],
                 showscale=True,
@@ -954,8 +931,8 @@ with tab_analytics:
                 ygap=3
             ))
             fig_heatmap.update_layout(
-                xaxis=dict(showgrid=False), 
-                yaxis=dict(showgrid=False), 
+                xaxis=dict(showgrid=False),
+                yaxis=dict(showgrid=False),
                 template="plotly_white"
             )
             st.plotly_chart(fig_heatmap, use_container_width=True, key="yearly_heatmap_chart")
@@ -1097,7 +1074,8 @@ with tab_todo:
                 if col2.button("Delete", key="del_" + task["id"]):
                     st.session_state.data["todo"].remove(task)
                     save_user_data(user_id, st.session_state.data)
-                    st.experimental_rerun()
+                    if hasattr(st, "experimental_rerun"):
+                        st.experimental_rerun()
         else:
             st.info("No tasks added yet.")
     
