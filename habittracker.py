@@ -936,7 +936,7 @@ with tab_analytics:
                     [1.0, "#4BB543"]
                 ],
                 zmin=0,
-                zmax=2,
+                zmax=28,
                 showscale=False,
                 xgap=3,
                 ygap=3
