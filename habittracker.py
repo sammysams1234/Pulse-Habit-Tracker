@@ -616,11 +616,8 @@ with tab_analytics:
     else:
         df = pd.DataFrame(columns=["habit", "date"])
 
+    # Weekly Analytics
     analytics_tabs = st.tabs(["Weekly", "Monthly", "Yearly"])
-
-    # --------------------------
-    # WEEKLY ANALYTICS
-    # --------------------------
     with analytics_tabs[0]:
         current_week_start = st.session_state.tracker_week
         current_week_end = current_week_start + datetime.timedelta(days=6)
@@ -636,12 +633,15 @@ with tab_analytics:
 
         last_week_start = current_week_start - datetime.timedelta(days=7)
         last_week_end = current_week_start - datetime.timedelta(days=1)
-
-        # Filter for current/last week
-        mask_current = (df["date"].dt.date >= current_week_start) & (df["date"].dt.date <= current_week_end)
-        mask_last = (df["date"].dt.date >= last_week_start) & (df["date"].dt.date <= last_week_end)
-        df_current = df[mask_current]
-        df_last = df[mask_last]
+        if not df.empty:
+            df["date"] = pd.to_datetime(df["date"])
+            mask_current = (df["date"].dt.date >= current_week_start) & (df["date"].dt.date <= current_week_end)
+            mask_last = (df["date"].dt.date >= last_week_start) & (df["date"].dt.date <= last_week_end)
+            df_current = df[mask_current]
+            df_last = df[mask_last]
+        else:
+            df_current = pd.DataFrame(columns=["habit", "date"])
+            df_last = pd.DataFrame(columns=["habit", "date"])
 
         current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
         last_summary = df_last.groupby("habit").size().reset_index(name="last_success_count")
@@ -658,7 +658,6 @@ with tab_analytics:
         summary_compare["last_success_count"] = summary_compare["last_success_count"].astype(int)
         summary_compare["goal"] = summary_compare["habit"].apply(lambda h: int(st.session_state.data["goals"].get(h, 0)))
 
-        # Show metric columns
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
         for idx, row in sorted_compare.iterrows():
@@ -671,7 +670,6 @@ with tab_analytics:
             col.metric(label=habit, value=value_str, delta=delta_str)
 
         weekly_sub_tabs = st.tabs(["Progress Bar Chart", "Progress Heatmap"])
-
         with weekly_sub_tabs[0]:
             melt_compare = summary_compare.melt(
                 id_vars="habit", 
@@ -743,9 +741,7 @@ with tab_analytics:
             )
             st.plotly_chart(fig_heatmap_weekly, use_container_width=True)
 
-    # --------------------------
-    # MONTHLY ANALYTICS
-    # --------------------------
+    # Monthly Analytics
     with analytics_tabs[1]:
         current_month_start = st.session_state.tracker_month
         year = current_month_start.year
@@ -768,11 +764,15 @@ with tab_analytics:
         prev_month = prev_month_start.month
         prev_num_days = calendar.monthrange(prev_year, prev_month)[1]
         prev_month_end = datetime.date(prev_year, prev_month, prev_num_days)
-
-        mask_current = (df["date"].dt.date >= current_month_start) & (df["date"].dt.date <= current_month_end)
-        mask_prev = (df["date"].dt.date >= prev_month_start) & (df["date"].dt.date <= prev_month_end)
-        df_current = df[mask_current]
-        df_prev = df[mask_prev]
+        if not df.empty:
+            df["date"] = pd.to_datetime(df["date"])
+            mask_current = (df["date"].dt.date >= current_month_start) & (df["date"].dt.date <= current_month_end)
+            mask_prev = (df["date"].dt.date >= prev_month_start) & (df["date"].dt.date <= prev_month_end)
+            df_current = df[mask_current]
+            df_prev = df[mask_prev]
+        else:
+            df_current = pd.DataFrame(columns=["habit", "date"])
+            df_prev = pd.DataFrame(columns=["habit", "date"])
 
         current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
         prev_summary = df_prev.groupby("habit").size().reset_index(name="prev_success_count")
@@ -786,8 +786,6 @@ with tab_analytics:
         summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
-
-        # approximate monthly goal from weekly goal
         summary_compare["goal"] = summary_compare["habit"].apply(
             lambda h: int(st.session_state.data["goals"].get(h, 0) / 7 * num_days)
         )
@@ -804,7 +802,6 @@ with tab_analytics:
             col.metric(label=habit, value=value_str, delta=delta_str)
 
         monthly_sub_tabs = st.tabs(["Progress Bar Chart", "Progress Heatmap"])
-
         with monthly_sub_tabs[0]:
             melt_compare = summary_compare.melt(
                 id_vars="habit", 
@@ -831,7 +828,6 @@ with tab_analytics:
                 template="plotly_white"
             )
             st.plotly_chart(fig_compare, use_container_width=True)
-
         with monthly_sub_tabs[1]:
             days = [datetime.date(year, month, d) for d in range(1, num_days+1)]
             heatmap_data = []
@@ -855,7 +851,6 @@ with tab_analytics:
                     text_row.append(text)
                 heatmap_data.append(row)
                 text_data.append(text_row)
-
             fig_heatmap = go.Figure(data=go.Heatmap(
                 z=heatmap_data,
                 x=[str(day.day) for day in days],
@@ -876,9 +871,7 @@ with tab_analytics:
             )
             st.plotly_chart(fig_heatmap, use_container_width=True)
 
-    # --------------------------
-    # YEARLY ANALYTICS
-    # --------------------------
+    # Yearly Analytics
     with analytics_tabs[2]:
         if "tracker_year" not in st.session_state:
             st.session_state.tracker_year = today.year
@@ -894,10 +887,15 @@ with tab_analytics:
             if st.button("Next Year ▶", key="next_year"):
                 st.session_state.tracker_year += 1
 
-        mask_current = (df["date"].dt.year == selected_year)
-        mask_prev = (df["date"].dt.year == (selected_year - 1))
-        df_current = df[mask_current]
-        df_prev = df[mask_prev]
+        if not df.empty:
+            df["date"] = pd.to_datetime(df["date"])
+            mask_current = (df["date"].dt.year == selected_year)
+            mask_prev = (df["date"].dt.year == (selected_year - 1))
+            df_current = df[mask_current]
+            df_prev = df[mask_prev]
+        else:
+            df_current = pd.DataFrame(columns=["habit", "date"])
+            df_prev = pd.DataFrame(columns=["habit", "date"])
 
         current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
         prev_summary = df_prev.groupby("habit").size().reset_index(name="prev_success_count")
@@ -929,7 +927,6 @@ with tab_analytics:
             col.metric(label=habit, value=value_str, delta=delta_str)
 
         yearly_sub_tabs = st.tabs(["Progress Bar Chart", "Progress Heatmap"])
-
         with yearly_sub_tabs[0]:
             melt_compare = summary_compare.melt(
                 id_vars="habit",
@@ -956,7 +953,6 @@ with tab_analytics:
                 template="plotly_white"
             )
             st.plotly_chart(fig_compare, use_container_width=True)
-
         with yearly_sub_tabs[1]:
             months = list(range(1, 13))
             month_names = [calendar.month_abbr[m] for m in months]
@@ -971,7 +967,6 @@ with tab_analytics:
                     text_row.append(f"{habit} in {calendar.month_abbr[m]} {selected_year}: {count} successes")
                 heatmap_data.append(row)
                 text_data.append(text_row)
-
             fig_heatmap = go.Figure(data=go.Heatmap(
                 z=heatmap_data,
                 x=month_names,
@@ -1003,9 +998,7 @@ with tab_journal:
     components.html(build_header_html("Pulse Journal"), height=150)
     journal_main_tabs = st.tabs(["Journal Entry", "Journal Summary"])
     
-    # ---------------------------
     # Sub-Tab 1: Journal Entry
-    # ---------------------------
     with journal_main_tabs[0]:
         today = datetime.date.today()
         today_str = today.strftime("%Y-%m-%d")
@@ -1031,9 +1024,7 @@ with tab_journal:
                 save_journal_entry(today_str, entry)
                 st.success(f"Journal entry for {today_str} saved successfully!")
     
-    # ---------------------------
     # Sub-Tab 2: Journal Summary
-    # ---------------------------
     with journal_main_tabs[1]:
         st.subheader("Get Journal Summary")
         journal_summary_tabs = st.tabs(["Daily", "Weekly", "Monthly"])
@@ -1105,9 +1096,7 @@ with tab_todo:
     # Two main sub-tabs: "Tasks" and "Task Summary"
     todo_main_tabs = st.tabs(["Tasks", "Task Summary"])
 
-    # ---------------------------
     # Sub-Tab 1: Manage Tasks
-    # ---------------------------
     with todo_main_tabs[0]:
         st.subheader("Your To-Do List")
 
@@ -1153,9 +1142,7 @@ with tab_todo:
         else:
             st.info("No tasks added yet.")
 
-        # ---------------------------
         # New Expander: Show Completed Tasks by Date
-        # ---------------------------
         with st.expander("Show Completed Tasks by Date"):
             completed_tasks = [task for task in st.session_state.data["todo"] if task.get("completed") and task.get("completed_at")]
             if not completed_tasks:
@@ -1174,9 +1161,7 @@ with tab_todo:
                     for task_desc in grouped_tasks[date_str]:
                         st.markdown(f"- {task_desc}")
 
-    # ---------------------------
     # Sub-Tab 2: Task Summary (Using AI)
-    # ---------------------------
     with todo_main_tabs[1]:
         st.subheader("Get Task Summary")
         summary_tabs = st.tabs(["Weekly", "Monthly", "Yearly"])
@@ -1188,9 +1173,7 @@ with tab_todo:
                     if not tasks_filtered:
                         st.info("No tasks completed this week.")
                     else:
-                        # Group tasks by completion date.
                         grouped_text = get_grouped_tasks_summary(tasks_filtered)
-                        # Use AI to summarize the grouped tasks.
                         summary = get_ai_tasks_summary(grouped_text, "Weekly")
                         st.subheader("Weekly Task Summary")
                         st.write(summary)
