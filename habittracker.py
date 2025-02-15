@@ -1153,6 +1153,27 @@ with tab_todo:
         else:
             st.info("No tasks added yet.")
 
+        # ---------------------------
+        # New Expander: Show Completed Tasks by Date
+        # ---------------------------
+        with st.expander("Show Completed Tasks by Date"):
+            completed_tasks = [task for task in st.session_state.data["todo"] if task.get("completed") and task.get("completed_at")]
+            if not completed_tasks:
+                st.info("No tasks completed yet.")
+            else:
+                grouped_tasks = {}
+                for task in completed_tasks:
+                    try:
+                        date_obj = datetime.datetime.fromisoformat(task["completed_at"]).date()
+                        date_str = date_obj.strftime("%Y-%m-%d")
+                    except Exception:
+                        continue
+                    grouped_tasks.setdefault(date_str, []).append(task["task"])
+                for date_str in sorted(grouped_tasks.keys(), reverse=True):
+                    st.markdown(f"### {date_str}")
+                    for task_desc in grouped_tasks[date_str]:
+                        st.markdown(f"- {task_desc}")
+
     # ---------------------------
     # Sub-Tab 2: Task Summary (Using AI)
     # ---------------------------
