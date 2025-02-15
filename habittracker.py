@@ -475,7 +475,7 @@ for habit in st.session_state.data["habits"]:
 top_col_left, top_col_right = st.columns([0.8, 0.2])
 with top_col_right:
     st.markdown(f"**Logged in as {user_id}**")
-    if st.button("I quit"):
+    if st.button("Logout"):
         st.session_state.logged_in = False
         cookies["login_token"] = ""
         cookies["username"] = ""
@@ -997,12 +997,12 @@ with tab_journal:
 
     # ---------------- JOURNAL SUMMARY ----------------
     with journal_main_tabs[1]:
-        st.subheader("Get Journal Summary (Weekly or Monthly)")
+        st.subheader("Generate Journal Summary")
         journal_summary_tabs = st.tabs(["Weekly", "Monthly"])
 
         # --- WEEKLY SUMMARY ---
         with journal_summary_tabs[0]:
-            if st.button("Generate Weekly Summary", key="weekly_summary"):
+            if st.button("Generate Weekly Well-Being Summary", key="weekly_summary"):
                 with st.spinner("Fetching and summarizing your journal entries..."):
                     all_entries = fetch_journal_entries()
                     filtered_entries = filter_entries_by_period(all_entries, "Weekly", today)
@@ -1117,12 +1117,12 @@ with tab_todo:
 
     # ------------------- COMPLETED TASK SUMMARY -------------------
     with todo_main_tabs[1]:
-        st.subheader("Generate Completed Task Summaries (Weekly or Monthly)")
+        st.subheader("Generate Completed Task Summaries")
         summary_tabs = st.tabs(["Weekly", "Monthly"])
 
         # --- WEEKLY TASK SUMMARY ---
         with summary_tabs[0]:
-            if st.button("Generate Weekly Task Summary", key="weekly_todo_summary"):
+            if st.button("Generate Completed Weekly Task Summary", key="weekly_todo_summary"):
                 with st.spinner("Generating your weekly task summary..."):
                     tasks_filtered = filter_tasks_by_period(st.session_state.data["todo"], "Weekly", today)
                     if not tasks_filtered:
@@ -1135,7 +1135,7 @@ with tab_todo:
 
         # --- MONTHLY TASK SUMMARY ---
         with summary_tabs[1]:
-            if st.button("Generate Monthly Task Summary", key="monthly_todo_summary"):
+            if st.button("Generate Completed Monthly Task Summary", key="monthly_todo_summary"):
                 with st.spinner("Generating your monthly task summary..."):
                     tasks_filtered = filter_tasks_by_period(st.session_state.data["todo"], "Monthly", today)
                     if not tasks_filtered:
@@ -1148,8 +1148,7 @@ with tab_todo:
 
     # ------------------- COMPLETED TASKS BY DATE -------------------
     with todo_main_tabs[2]:
-        st.subheader("Completed Tasks by Date")
-        st.write("Below is a list of completed tasks, grouped by date (newest first).")
+        st.subheader("Completed Tasks Breakdown")
 
         completed_tasks = [
             task for task in st.session_state.data["todo"] 
