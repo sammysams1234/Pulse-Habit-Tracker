@@ -250,6 +250,7 @@ def shift_month(date_obj, delta):
 def compute_current_streak(habit_data, today):
     streak = 0
     d = today
+    # If today's date isn't in the habit data, skip it and go to yesterday
     if d.strftime("%Y-%m-%d") not in habit_data:
         d -= datetime.timedelta(days=1)
     while True:
@@ -262,8 +263,11 @@ def compute_current_streak(habit_data, today):
     return streak
 
 def compute_longest_streak(habit_data, today):
-    dates = [datetime.datetime.strptime(d_str, "%Y-%m-%d").date()
-             for d_str in habit_data if datetime.datetime.strptime(d_str, "%Y-%m-%d").date() <= today]
+    dates = [
+        datetime.datetime.strptime(d_str, "%Y-%m-%d").date()
+        for d_str in habit_data 
+        if datetime.datetime.strptime(d_str, "%Y-%m-%d").date() <= today
+    ]
     if not dates:
         return 0
     start = min(dates)
@@ -362,9 +366,11 @@ def get_summary_for_entries(entries_text, period):
         return f"Error generating summary: {e}"
 
 # =====================================================
-# HELPER FUNCTIONS FOR TASKS (To Do List)
+# TASK FUNCTIONS (To Do List)
 # =====================================================
 def filter_tasks_by_period(tasks, period, today):
+    """Return tasks that fall into the requested period 
+       (Weekly, Monthly, or Yearly) based on creation or completion date."""
     filtered = []
     if period == "Weekly":
         start = today - datetime.timedelta(days=today.weekday())
@@ -379,14 +385,15 @@ def filter_tasks_by_period(tasks, period, today):
         return tasks
 
     for task in tasks:
-        created = datetime.datetime.fromisoformat(task["timestamp"]).date()
+        created_date = datetime.datetime.fromisoformat(task["timestamp"]).date()
         completed_date = None
         if task.get("completed") and task.get("completed_at"):
             completed_date = datetime.datetime.fromisoformat(task["completed_at"]).date()
-        # If task is completed and its completion date falls in period, or if pending and created in period.
+        # If task is completed and that completion date is in the period,
+        # or if still pending but created in the period, we include it.
         if task.get("completed") and completed_date and start <= completed_date <= end:
             filtered.append(task)
-        elif not task.get("completed") and start <= created <= end:
+        elif not task.get("completed") and start <= created_date <= end:
             filtered.append(task)
     return filtered
 
@@ -402,14 +409,15 @@ def get_summary_for_tasks(tasks, period):
         f"Please summarize the following to-do tasks for a {period.lower()} period. "
         "Focus on which tasks were completed and which ones are still pending. "
         "Provide actionable insights and encouragement. "
-        "Do not add any headings; only return the summary text.\n\n" +
-        tasks_text
+        "Do not add any headings; only return the summary text.\n\n" + tasks_text
     )
     try:
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "system", "content": "You are a helpful productivity assistant."},
-                      {"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": "You are a helpful productivity assistant."},
+                {"role": "user", "content": prompt},
+            ],
             temperature=0.7,
             max_tokens=250
         )
@@ -438,7 +446,20 @@ for habit in st.session_state.data["habits"]:
     update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
 
 # =====================================================
-# CREATE TOP TABS (Added new "To Do List" tab)
+# DISPLAY TOP-RIGHT: LOGGED IN USER INFO & LOGOUT BUTTON
+# =====================================================
+col_left, col_right = st.columns([3, 1])
+with col_right:
+    st.markdown(f"**Logged in as {st.session_state.username}**")
+    if st.button("Log Out"):
+        cookies.delete("login_token")
+        cookies.delete("username")
+        cookies.save()
+        st.session_state.logged_in = False
+        st.experimental_rerun()
+
+# =====================================================
+# CREATE TOP TABS (including the new "To Do List")
 # =====================================================
 tab_pulse, tab_analytics, tab_journal, tab_todo = st.tabs([
     "Weekly Habit Tracker 📆", 
@@ -513,6 +534,7 @@ with tab_pulse:
                 label = "✅" if outcome == "succeeded" else "❌" if outcome == "failed" else str(current_date.day)
                 if row_cols[i+1].button(label, key=f"weekly_{habit}_{date_str}"):
                     current_outcome = st.session_state.data["habits"][habit].get(date_str, None)
+                    # cycle outcome: None -> succeeded -> failed -> None
                     new = "succeeded" if current_outcome is None else "failed" if current_outcome == "succeeded" else None
                     if new is None:
                         st.session_state.data["habits"][habit].pop(date_str, None)
@@ -534,8 +556,26 @@ with tab_pulse:
 with tab_analytics:
     components.html(build_header_html("Pulse Analytics"), height=150)
     
+    # Prepare a DataFrame of "succeeded" habit completions
+    records = []
+    for habit, days_dict in st.session_state.data["habits"].items():
+        for date_str, outcome in days_dict.items():
+            if outcome == "succeeded":
+                try:
+                    date_obj = pd.to_datetime(date_str)
+                    records.append({"habit": habit, "date": date_obj})
+                except Exception:
+                    pass
+    if records:
+        df = pd.DataFrame(records)
+    else:
+        df = pd.DataFrame(columns=["habit", "date"])
+
     analytics_tabs = st.tabs(["Weekly", "Monthly", "Yearly"])
-    
+
+    # --------------------------
+    # WEEKLY ANALYTICS
+    # --------------------------
     with analytics_tabs[0]:
         current_week_start = st.session_state.tracker_week
         current_week_end = current_week_start + datetime.timedelta(days=6)
@@ -548,42 +588,32 @@ with tab_analytics:
         with col_next:
             if st.button("Next Week ▶", key="next_week"):
                 st.session_state.tracker_week += datetime.timedelta(days=7)
-    
+
         last_week_start = current_week_start - datetime.timedelta(days=7)
         last_week_end = current_week_start - datetime.timedelta(days=1)
-        records = []
-        for habit, days in st.session_state.data["habits"].items():
-            for date_str, outcome in days.items():
-                if outcome == "succeeded":
-                    try:
-                        date_obj = pd.to_datetime(date_str)
-                        records.append({"habit": habit, "date": date_obj})
-                    except Exception:
-                        pass
-        if records:
-            df = pd.DataFrame(records)
-        else:
-            df = pd.DataFrame(columns=["habit", "date"])
-    
+
+        # Filter for current/last week
         mask_current = (df["date"].dt.date >= current_week_start) & (df["date"].dt.date <= current_week_end)
         mask_last = (df["date"].dt.date >= last_week_start) & (df["date"].dt.date <= last_week_end)
         df_current = df[mask_current]
         df_last = df[mask_last]
-    
+
         current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
         last_summary = df_last.groupby("habit").size().reset_index(name="last_success_count")
-    
+
+        # Ensure every habit is represented
         for habit in st.session_state.data["habits"].keys():
             if habit not in current_summary["habit"].values:
                 current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
             if habit not in last_summary["habit"].values:
                 last_summary = pd.concat([last_summary, pd.DataFrame([{"habit": habit, "last_success_count": 0}])], ignore_index=True)
-    
+
         summary_compare = pd.merge(current_summary, last_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["last_success_count"] = summary_compare["last_success_count"].astype(int)
         summary_compare["goal"] = summary_compare["habit"].apply(lambda h: int(st.session_state.data["goals"].get(h, 0)))
-    
+
+        # Show metric columns
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
         for idx, row in sorted_compare.iterrows():
@@ -594,9 +624,9 @@ with tab_analytics:
             value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
             col = cols[idx % 3]
             col.metric(label=habit, value=value_str, delta=delta_str)
-    
+
         weekly_sub_tabs = st.tabs(["Progress Bar Chart", "Progress Heatmap"])
-    
+
         with weekly_sub_tabs[0]:
             melt_compare = summary_compare.melt(
                 id_vars="habit", 
@@ -623,7 +653,7 @@ with tab_analytics:
                 template="plotly_white"
             )
             st.plotly_chart(fig_compare, use_container_width=True)
-    
+
         with weekly_sub_tabs[1]:
             week_dates = [current_week_start + datetime.timedelta(days=i) for i in range(7)]
             heatmap_data_weekly = []
@@ -647,7 +677,7 @@ with tab_analytics:
                     text_row.append(text)
                 heatmap_data_weekly.append(row)
                 text_data_weekly.append(text_row)
-    
+
             fig_heatmap_weekly = go.Figure(data=go.Heatmap(
                 z=heatmap_data_weekly,
                 x=[day.strftime("%a") for day in week_dates],
@@ -667,14 +697,17 @@ with tab_analytics:
                 template="plotly_white"
             )
             st.plotly_chart(fig_heatmap_weekly, use_container_width=True)
-    
+
+    # --------------------------
+    # MONTHLY ANALYTICS
+    # --------------------------
     with analytics_tabs[1]:
         current_month_start = st.session_state.tracker_month
         year = current_month_start.year
         month = current_month_start.month
         num_days = calendar.monthrange(year, month)[1]
         current_month_end = datetime.date(year, month, num_days)
-    
+
         col_prev, col_center, col_next = st.columns([1, 2, 1])
         with col_prev:
             if st.button("◀ Previous Month", key="prev_month"):
@@ -684,35 +717,36 @@ with tab_analytics:
         with col_next:
             if st.button("Next Month ▶", key="next_month"):
                 st.session_state.tracker_month = shift_month(current_month_start, 1)
-    
+
         prev_month_start = shift_month(current_month_start, -1)
         prev_year = prev_month_start.year
         prev_month = prev_month_start.month
         prev_num_days = calendar.monthrange(prev_year, prev_month)[1]
         prev_month_end = datetime.date(prev_year, prev_month, prev_num_days)
-    
+
         mask_current = (df["date"].dt.date >= current_month_start) & (df["date"].dt.date <= current_month_end)
         mask_prev = (df["date"].dt.date >= prev_month_start) & (df["date"].dt.date <= prev_month_end)
         df_current = df[mask_current]
         df_prev = df[mask_prev]
-    
+
         current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
         prev_summary = df_prev.groupby("habit").size().reset_index(name="prev_success_count")
-    
+
         for habit in st.session_state.data["habits"].keys():
             if habit not in current_summary["habit"].values:
                 current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
             if habit not in prev_summary["habit"].values:
                 prev_summary = pd.concat([prev_summary, pd.DataFrame([{"habit": habit, "prev_success_count": 0}])], ignore_index=True)
-    
+
         summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
-    
+
+        # approximate monthly goal from weekly goal
         summary_compare["goal"] = summary_compare["habit"].apply(
             lambda h: int(st.session_state.data["goals"].get(h, 0) / 7 * num_days)
         )
-    
+
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
         for idx, row in sorted_compare.iterrows():
@@ -723,9 +757,9 @@ with tab_analytics:
             value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
             col = cols[idx % 3]
             col.metric(label=habit, value=value_str, delta=delta_str)
-    
+
         monthly_sub_tabs = st.tabs(["Progress Bar Chart", "Progress Heatmap"])
-    
+
         with monthly_sub_tabs[0]:
             melt_compare = summary_compare.melt(
                 id_vars="habit", 
@@ -752,7 +786,7 @@ with tab_analytics:
                 template="plotly_white"
             )
             st.plotly_chart(fig_compare, use_container_width=True)
-    
+
         with monthly_sub_tabs[1]:
             days = [datetime.date(year, month, d) for d in range(1, num_days+1)]
             heatmap_data = []
@@ -776,7 +810,7 @@ with tab_analytics:
                     text_row.append(text)
                 heatmap_data.append(row)
                 text_data.append(text_row)
-    
+
             fig_heatmap = go.Figure(data=go.Heatmap(
                 z=heatmap_data,
                 x=[str(day.day) for day in days],
@@ -796,11 +830,14 @@ with tab_analytics:
                 template="plotly_white"
             )
             st.plotly_chart(fig_heatmap, use_container_width=True)
-    
+
+    # --------------------------
+    # YEARLY ANALYTICS
+    # --------------------------
     with analytics_tabs[2]:
         if "tracker_year" not in st.session_state:
             st.session_state.tracker_year = today.year
-    
+
         selected_year = st.session_state.tracker_year
         col_prev, col_center, col_next = st.columns([1, 2, 1])
         with col_prev:
@@ -811,30 +848,30 @@ with tab_analytics:
         with col_next:
             if st.button("Next Year ▶", key="next_year"):
                 st.session_state.tracker_year += 1
-    
+
         mask_current = (df["date"].dt.year == selected_year)
         mask_prev = (df["date"].dt.year == (selected_year - 1))
         df_current = df[mask_current]
         df_prev = df[mask_prev]
-    
+
         current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
         prev_summary = df_prev.groupby("habit").size().reset_index(name="prev_success_count")
-    
+
         for habit in st.session_state.data["habits"].keys():
             if habit not in current_summary["habit"].values:
                 current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
             if habit not in prev_summary["habit"].values:
                 prev_summary = pd.concat([prev_summary, pd.DataFrame([{"habit": habit, "prev_success_count": 0}])], ignore_index=True)
-    
+
         summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
-    
+
         days_in_year = 366 if calendar.isleap(selected_year) else 365
         summary_compare["goal"] = summary_compare["habit"].apply(
             lambda h: int(st.session_state.data["goals"].get(h, 0) / 7 * days_in_year)
         )
-    
+
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
         for idx, row in sorted_compare.iterrows():
@@ -845,9 +882,9 @@ with tab_analytics:
             value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
             col = cols[idx % 3]
             col.metric(label=habit, value=value_str, delta=delta_str)
-    
+
         yearly_sub_tabs = st.tabs(["Progress Bar Chart", "Progress Heatmap"])
-    
+
         with yearly_sub_tabs[0]:
             melt_compare = summary_compare.melt(
                 id_vars="habit",
@@ -874,7 +911,7 @@ with tab_analytics:
                 template="plotly_white"
             )
             st.plotly_chart(fig_compare, use_container_width=True)
-    
+
         with yearly_sub_tabs[1]:
             months = list(range(1, 13))
             month_names = [calendar.month_abbr[m] for m in months]
@@ -889,7 +926,7 @@ with tab_analytics:
                     text_row.append(f"{habit} in {calendar.month_abbr[m]} {selected_year}: {count} successes")
                 heatmap_data.append(row)
                 text_data.append(text_row)
-    
+
             fig_heatmap = go.Figure(data=go.Heatmap(
                 z=heatmap_data,
                 x=month_names,
@@ -921,6 +958,9 @@ with tab_journal:
     components.html(build_header_html("Pulse Journal"), height=150)
     journal_main_tabs = st.tabs(["Journal Entry", "Journal Summary"])
     
+    # ---------------------------
+    # Sub-Tab 1: Journal Entry
+    # ---------------------------
     with journal_main_tabs[0]:
         today = datetime.date.today()
         today_str = today.strftime("%Y-%m-%d")
@@ -946,6 +986,9 @@ with tab_journal:
                 save_journal_entry(today_str, entry)
                 st.success(f"Journal entry for {today_str} saved successfully!")
     
+    # ---------------------------
+    # Sub-Tab 2: Journal Summary
+    # ---------------------------
     with journal_main_tabs[1]:
         st.subheader("Get Journal Summary")
         journal_summary_tabs = st.tabs(["Daily", "Weekly", "Monthly"])
@@ -1012,78 +1055,95 @@ with tab_journal:
 # TAB: TO DO LIST (Task Management & GPT Summaries)
 # =====================================================
 with tab_todo:
-    components.html(build_header_html("To Do List"), height=150)
-    st.subheader("Your To-Do List")
-    
-    # Add new task input.
-    new_task = st.text_input("Enter a new task", key="new_todo_task")
-    if st.button("Add Task"):
-        if new_task.strip() == "":
-            st.error("Please enter a valid task.")
+    components.html(build_header_html("Pulse To-Do"), height=150)
+
+    # Two main sub-tabs: "Tasks" and "Task Summary"
+    todo_main_tabs = st.tabs(["Tasks", "Task Summary"])
+
+    # ---------------------------
+    # Sub-Tab 1: Manage Tasks
+    # ---------------------------
+    with todo_main_tabs[0]:
+        st.subheader("Your To-Do List")
+
+        # Input for adding a new task
+        new_task = st.text_input("Enter a new task", key="new_todo_task")
+        if st.button("Add Task"):
+            if new_task.strip() == "":
+                st.error("Please enter a valid task.")
+            else:
+                if "todo" not in st.session_state.data:
+                    st.session_state.data["todo"] = []
+                task_obj = {
+                    "id": str(uuid.uuid4()),
+                    "task": new_task.strip(),
+                    "completed": False,
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "completed_at": None
+                }
+                st.session_state.data["todo"].append(task_obj)
+                save_user_data(user_id, st.session_state.data)
+                st.success("Task added successfully!")
+
+        st.markdown("---")
+
+        # List existing tasks
+        if "todo" in st.session_state.data and st.session_state.data["todo"]:
+            for task in st.session_state.data["todo"]:
+                col1, col2, col3 = st.columns([6, 1, 1])
+                # Checkbox for marking completion
+                new_completed = col1.checkbox(task["task"], value=task.get("completed", False), key=task["id"])
+                if new_completed != task.get("completed", False):
+                    task["completed"] = new_completed
+                    if new_completed:
+                        task["completed_at"] = datetime.datetime.now().isoformat()
+                    else:
+                        task["completed_at"] = None
+                    save_user_data(user_id, st.session_state.data)
+                # Delete button
+                if col2.button("Delete", key="del_" + task["id"]):
+                    st.session_state.data["todo"].remove(task)
+                    save_user_data(user_id, st.session_state.data)
+                    st.experimental_rerun()
         else:
-            if "todo" not in st.session_state.data:
-                st.session_state.data["todo"] = []
-            task_obj = {
-                "id": str(uuid.uuid4()),
-                "task": new_task.strip(),
-                "completed": False,
-                "timestamp": datetime.datetime.now().isoformat(),
-                "completed_at": None
-            }
-            st.session_state.data["todo"].append(task_obj)
-            save_user_data(user_id, st.session_state.data)
-            st.success("Task added successfully!")
-    
-    st.markdown("---")
-    
-    # List existing tasks.
-    if "todo" in st.session_state.data and st.session_state.data["todo"]:
-        for task in st.session_state.data["todo"]:
-            col1, col2, col3 = st.columns([6, 1, 1])
-            # Checkbox for marking complete.
-            new_completed = col1.checkbox(task["task"], value=task.get("completed", False), key=task["id"])
-            if new_completed != task.get("completed", False):
-                task["completed"] = new_completed
-                if new_completed:
-                    task["completed_at"] = datetime.datetime.now().isoformat()
-                else:
-                    task["completed_at"] = None
-                save_user_data(user_id, st.session_state.data)
-            # Delete button.
-            if col2.button("Delete", key="del_" + task["id"]):
-                st.session_state.data["todo"].remove(task)
-                save_user_data(user_id, st.session_state.data)
-                st.experimental_rerun()
-    else:
-        st.info("No tasks added yet.")
-    
-    st.markdown("---")
-    st.subheader("Task Summaries")
-    summary_tabs = st.tabs(["Weekly Summary", "Monthly Summary", "Yearly Summary"])
-    
-    with summary_tabs[0]:
-        if st.button("Generate Weekly Task Summary", key="weekly_todo_summary"):
-            tasks_filtered = filter_tasks_by_period(st.session_state.data["todo"], "Weekly", today)
-            if not tasks_filtered:
-                st.info("No tasks found for this week.")
-            else:
-                summary = get_summary_for_tasks(tasks_filtered, "Weekly")
-                st.write(summary)
-    
-    with summary_tabs[1]:
-        if st.button("Generate Monthly Task Summary", key="monthly_todo_summary"):
-            tasks_filtered = filter_tasks_by_period(st.session_state.data["todo"], "Monthly", today)
-            if not tasks_filtered:
-                st.info("No tasks found for this month.")
-            else:
-                summary = get_summary_for_tasks(tasks_filtered, "Monthly")
-                st.write(summary)
-    
-    with summary_tabs[2]:
-        if st.button("Generate Yearly Task Summary", key="yearly_todo_summary"):
-            tasks_filtered = filter_tasks_by_period(st.session_state.data["todo"], "Yearly", today)
-            if not tasks_filtered:
-                st.info("No tasks found for this year.")
-            else:
-                summary = get_summary_for_tasks(tasks_filtered, "Yearly")
-                st.write(summary)
+            st.info("No tasks added yet.")
+
+    # ---------------------------
+    # Sub-Tab 2: Task Summary
+    # ---------------------------
+    with todo_main_tabs[1]:
+        st.subheader("Get Task Summary")
+        summary_tabs = st.tabs(["Weekly", "Monthly", "Yearly"])
+
+        with summary_tabs[0]:
+            # Weekly Summary
+            if st.button("Generate Weekly Task Summary", key="weekly_todo_summary"):
+                with st.spinner("Generating your weekly task summary..."):
+                    tasks_filtered = filter_tasks_by_period(st.session_state.data["todo"], "Weekly", today)
+                    if not tasks_filtered:
+                        st.info("No tasks found for this week.")
+                    else:
+                        summary = get_summary_for_tasks(tasks_filtered, "Weekly")
+                        st.write(summary)
+
+        with summary_tabs[1]:
+            # Monthly Summary
+            if st.button("Generate Monthly Task Summary", key="monthly_todo_summary"):
+                with st.spinner("Generating your monthly task summary..."):
+                    tasks_filtered = filter_tasks_by_period(st.session_state.data["todo"], "Monthly", today)
+                    if not tasks_filtered:
+                        st.info("No tasks found for this month.")
+                    else:
+                        summary = get_summary_for_tasks(tasks_filtered, "Monthly")
+                        st.write(summary)
+
+        with summary_tabs[2]:
+            # Yearly Summary
+            if st.button("Generate Yearly Task Summary", key="yearly_todo_summary"):
+                with st.spinner("Generating your yearly task summary..."):
+                    tasks_filtered = filter_tasks_by_period(st.session_state.data["todo"], "Yearly", today)
+                    if not tasks_filtered:
+                        st.info("No tasks found for this year.")
+                    else:
+                        summary = get_summary_for_tasks(tasks_filtered, "Yearly")
+                        st.write(summary)
