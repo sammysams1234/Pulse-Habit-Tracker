@@ -1099,7 +1099,10 @@ with tab_todo:
                         st.experimental_rerun()
                     if col3.button("Cancel", key="cancel_"+task["id"]):
                         st.session_state.editing_todo = None
-                        st.experimental_rerun()
+                        if hasattr(st, "experimental_rerun"):
+                            st.experimental_rerun()
+                        else:
+                            st.stop()
                 else:
                     col1, col2, col3, col4 = st.columns([5, 1, 1, 1])
                 # Display the task with a checkbox for completed status
