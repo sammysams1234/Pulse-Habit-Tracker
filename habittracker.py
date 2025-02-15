@@ -1070,7 +1070,7 @@ with tab_analytics:
                 colorscale="Greens",
                 zmin=0,
                 zmax=28,
-                showscale=True
+                showscale=False
             ))
             fig_heatmap_yearly.update_layout(
                 xaxis=dict(showgrid=False),
