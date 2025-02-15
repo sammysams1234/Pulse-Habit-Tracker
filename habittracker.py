@@ -387,7 +387,7 @@ with tab_pulse:
                 current_goal = int(st.session_state.data["goals"].get(habit, 0))
                 col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
                 col1.markdown(f"**{habit}**")
-                new_goal_val = col2.number_input("Goal", min_value=1, value=current_goal, key=f"edit_goal_{habit}")
+                new_goal_val = col2.number_input("Weekly goal", min_value=1, value=current_goal, key=f"edit_goal_{habit}")
                 if col3.button("Update", key=f"update_goal_{habit}"):
                     st.session_state.data["goals"][habit] = int(new_goal_val)
                     save_user_data(user_id, st.session_state.data)
