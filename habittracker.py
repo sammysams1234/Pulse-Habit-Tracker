@@ -470,7 +470,7 @@ for habit in st.session_state.data["habits"]:
     update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
 
 # -----------------------------------------------------
-# Place "Logged in as {username}" and "I quit" on the right
+# Place "Logged in as {username}" and "Logout" on the right
 # -----------------------------------------------------
 top_col_left, top_col_right = st.columns([0.8, 0.2])
 with top_col_right:
@@ -508,7 +508,7 @@ with tab_pulse:
         new_goal = st.number_input("Set Weekly Goal", min_value=1, value=1, key="new_goal_input")
         new_color = st.color_picker("Pick a color (optional)", value="#000000", key="new_color_input")
 
-        if st.button("Add Habit"):
+        if st.button("Add Habit", key="add_habit_button"):
             new_habit = new_habit.strip()
             if not new_habit:
                 st.error("Please enter a valid habit.")
@@ -524,6 +524,11 @@ with tab_pulse:
                 update_streaks_for_habit(user_id, new_habit, st.session_state.data["habits"][new_habit], today)
                 save_user_data(user_id, st.session_state.data)
                 st.success(f"Habit '{new_habit}' added successfully!")
+                # Clear the input fields and re-run the app
+                st.session_state["new_habit_input"] = ""
+                st.session_state["new_goal_input"] = 1
+                st.session_state["new_color_input"] = "#000000"
+                st.experimental_rerun()
 
         st.subheader("Manage Habits")
         if st.session_state.data["habits"]:
@@ -559,7 +564,6 @@ with tab_pulse:
                         habit = new_name_val
 
                     st.session_state.data["goals"][habit] = int(new_goal_val)
-    # Ensure that the 'habit_colors' key exists before assigning a new color.
                     if "habit_colors" not in st.session_state.data:
                         st.session_state.data["habit_colors"] = {}
                     st.session_state.data["habit_colors"][habit] = new_color_val
@@ -770,7 +774,6 @@ with tab_analytics:
                 hover_data_weekly.append(hover_row)
                 display_data_weekly.append(display_row)
 
-            # Use red (#FF0000) for failed entries
             fig_heatmap_weekly = go.Figure(data=go.Heatmap(
                 z=heatmap_data_weekly,
                 x=[day.strftime("%a") for day in week_dates],
@@ -780,9 +783,9 @@ with tab_analytics:
                 hovertext=hover_data_weekly,
                 hoverinfo="text",
                 colorscale=[
-                    [0.0, "#eaeaea"],  # no data
-                    [0.5, "#FF0000"],  # failed
-                    [1.0, "#4BB543"]   # succeeded
+                    [0.0, "#eaeaea"],  
+                    [0.5, "#FF0000"],  
+                    [1.0, "#4BB543"]   
                 ],
                 zmin=0,
                 zmax=2,
@@ -844,7 +847,6 @@ with tab_analytics:
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
 
-        # Estimate monthly goal from weekly goal * (days_in_month / 7)
         summary_compare["goal"] = summary_compare["habit"].apply(
             lambda h: int(st.session_state.data["goals"].get(h, 0) / 7 * num_days)
         )
@@ -932,9 +934,9 @@ with tab_analytics:
                 hovertext=hover_data,
                 hoverinfo="text",
                 colorscale=[
-                    [0.0, "#eaeaea"],  # no data
-                    [0.5, "#FF0000"],  # failed
-                    [1.0, "#4BB543"]   # succeeded
+                    [0.0, "#eaeaea"],
+                    [0.5, "#FF0000"],
+                    [1.0, "#4BB543"]
                 ],
                 zmin=0,
                 zmax=2,
@@ -955,9 +957,6 @@ with tab_analytics:
 with tab_journal:
     components.html(build_header_html("Pulse Well-Being Journal"), height=150)
 
-    #  1) Journal Entry
-    #  2) Journal Summary
-    #  3) Past Journal Entries
     journal_main_tabs = st.tabs(["Journal Entry", "Journal Summary", "Journal Entries"])
 
     # ---------------- JOURNAL ENTRY ----------------
@@ -984,7 +983,6 @@ with tab_journal:
                 }
                 st.success(f"Journal entry for {today_str} saved successfully!")
 
-                # If there's text, generate a new daily summary
                 if feeling_input.strip() or cause_input.strip():
                     entries_text = build_entries_text({today_str: entry})
                     daily_summary = get_summary_for_entries(entries_text, "Daily")
@@ -992,7 +990,6 @@ with tab_journal:
 
                 save_journal_entry(today_str, entry)
 
-        # Show the daily summary (if any) only once here
         if daily_summary:
             st.subheader("Auto-Generated Daily Summary")
             st.write(daily_summary)
@@ -1001,7 +998,6 @@ with tab_journal:
     with journal_main_tabs[1]:
         journal_summary_tabs = st.tabs(["Weekly", "Monthly"])
 
-        # --- WEEKLY SUMMARY ---
         with journal_summary_tabs[0]:
             if st.button("Generate Weekly Well-Being Summary", key="weekly_summary"):
                 with st.spinner("Fetching and summarizing your journal entries..."):
@@ -1014,7 +1010,6 @@ with tab_journal:
                         summary = get_summary_for_entries(entries_text, "Weekly")
                         st.write(summary)
 
-        # --- MONTHLY SUMMARY ---
         with journal_summary_tabs[1]:
             if st.button("Generate Monthly Well-Being Summary", key="monthly_summary"):
                 with st.spinner("Fetching and summarizing your journal entries..."):
@@ -1033,7 +1028,6 @@ with tab_journal:
         if not all_entries:
             st.info("No journal entries recorded yet.")
         else:
-            # Sort in descending order
             for date_str in sorted(all_entries.keys(), reverse=True):
                 entry = all_entries[date_str]
                 st.markdown(f"### **{date_str}**")
@@ -1043,7 +1037,7 @@ with tab_journal:
                 if summary_text:
                     st.markdown("#### Auto-Generated Summary")
                     st.markdown(summary_text)
-                st.markdown("---")  # horizontal line for clarity
+                st.markdown("---")
 
 # =====================================================
 # TAB: TO DO LIST
@@ -1051,9 +1045,6 @@ with tab_journal:
 with tab_todo:
     components.html(build_header_html("Pulse To-Do List"), height=150)
 
-    #  1) Tasks
-    #  2) Completed Task Summary
-    #  3) Completed Tasks by Date
     todo_main_tabs = st.tabs(["To-Do List", "Completed Task Summary", "Completed Tasks Breakdown"])
 
     # ------------------- TASKS -------------------
@@ -1061,7 +1052,7 @@ with tab_todo:
         st.subheader("Your To-Do List")
 
         new_task = st.text_input("Enter a new task", key="new_todo_task")
-        if st.button("Add Task"):
+        if st.button("Add Task", key="add_task_button"):
             if new_task.strip() == "":
                 st.error("Please enter a valid task.")
             else:
@@ -1078,6 +1069,7 @@ with tab_todo:
                 save_user_data(user_id, st.session_state.data)
                 st.success("Task added successfully!")
                 st.session_state["new_todo_task"] = ""
+                st.experimental_rerun()
 
         st.markdown("---")
         if "todo" in st.session_state.data and st.session_state.data["todo"]:
@@ -1102,7 +1094,6 @@ with tab_todo:
         else:
             st.info("No tasks added yet. You can add one by entering a new task above!")
 
-        # Default daily summary of completed tasks
         st.markdown("---")
         st.subheader("Auto-Generated Daily Completed Tasks Summary")
         completed_today = filter_tasks_by_period(st.session_state.data["todo"], "Daily", today)
@@ -1117,7 +1108,6 @@ with tab_todo:
     with todo_main_tabs[1]:
         summary_tabs = st.tabs(["Weekly", "Monthly"])
 
-        # --- WEEKLY TASK SUMMARY ---
         with summary_tabs[0]:
             if st.button("Generate Completed Weekly Task Summary", key="weekly_todo_summary"):
                 with st.spinner("Generating your weekly task summary..."):
@@ -1129,7 +1119,6 @@ with tab_todo:
                         summary = get_ai_tasks_summary(grouped_text, "Weekly")
                         st.write(summary)
 
-        # --- MONTHLY TASK SUMMARY ---
         with summary_tabs[1]:
             if st.button("Generate Completed Monthly Task Summary", key="monthly_todo_summary"):
                 with st.spinner("Generating your monthly task summary..."):
@@ -1143,7 +1132,6 @@ with tab_todo:
 
     # ------------------- COMPLETED TASKS BY DATE -------------------
     with todo_main_tabs[2]:
-
         completed_tasks = [
             task for task in st.session_state.data["todo"] 
             if task.get("completed") and task.get("completed_at")
@@ -1160,7 +1148,6 @@ with tab_todo:
                     continue
                 grouped_tasks.setdefault(date_str, []).append(task["task"])
 
-            # Sort dates in descending order
             for date_str in sorted(grouped_tasks.keys(), reverse=True):
                 st.markdown(f"### **{date_str}**")
                 for i, task_desc in enumerate(grouped_tasks[date_str], start=1):
