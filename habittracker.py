@@ -961,7 +961,7 @@ with tab_journal:
     with journal_main_tabs[0]:
         today = datetime.date.today()
         today_str = today.strftime("%Y-%m-%d")
-        st.subheader(f"Journal Entry for {today_str}")
+        st.subheader(f"Journal Entry for Today")
 
         existing_entry = get_journal_entry(today_str)
         default_feeling = existing_entry.get("feeling", "") if existing_entry else ""
@@ -969,7 +969,6 @@ with tab_journal:
         daily_summary = existing_entry.get("summary") if existing_entry else None
 
         with st.form("journal_entry_form"):
-            st.write("Record your feelings and possible causes below:")
             feeling_input = st.text_area("How are you feeling today?", value=default_feeling, height=120)
             cause_input = st.text_area("What do you think is causing these feelings?", value=default_cause, height=120)
             submitted = st.form_submit_button("Save Journal Entry")
