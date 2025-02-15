@@ -655,7 +655,6 @@ with tab_analytics:
     else:
         df = pd.DataFrame(columns=["habit", "date"])
 
-    # Only keep "Weekly" and "Monthly" sub-tabs
     analytics_tabs = st.tabs(["Weekly", "Monthly"])
     
     # ----------------- WEEKLY ANALYTICS -----------------
@@ -783,9 +782,9 @@ with tab_analytics:
                 hovertext=hover_data_weekly,
                 hoverinfo="text",
                 colorscale=[
-                    [0.0, "#eaeaea"],  
-                    [0.5, "#FF0000"],  
-                    [1.0, "#4BB543"]   
+                    [0.0, "#eaeaea"],
+                    [0.5, "#FF0000"],
+                    [1.0, "#4BB543"]
                 ],
                 zmin=0,
                 zmax=2,
@@ -1050,26 +1049,27 @@ with tab_todo:
     # ------------------- TASKS -------------------
     with todo_main_tabs[0]:
         st.subheader("Your To-Do List")
-
-        new_task = st.text_input("Enter a new task", key="new_todo_task")
-        if st.button("Add Task", key="add_task_button"):
-            if new_task.strip() == "":
-                st.error("Please enter a valid task.")
-            else:
-                if "todo" not in st.session_state.data:
-                    st.session_state.data["todo"] = []
-                task_obj = {
-                    "id": str(uuid.uuid4()),
-                    "task": new_task.strip(),
-                    "completed": False,
-                    "timestamp": datetime.datetime.now().isoformat(),
-                    "completed_at": None
-                }
-                st.session_state.data["todo"].append(task_obj)
-                save_user_data(user_id, st.session_state.data)
-                st.success("Task added successfully!")
-                st.session_state["new_todo_task"] = ""
-                st.experimental_rerun()
+        # Wrap the new task input in a form so that after submission the input resets
+        with st.form("todo_form"):
+            new_task = st.text_input("Enter a new task", key="new_todo_task")
+            submit_task = st.form_submit_button("Add Task")
+            if submit_task:
+                if new_task.strip() == "":
+                    st.error("Please enter a valid task.")
+                else:
+                    if "todo" not in st.session_state.data:
+                        st.session_state.data["todo"] = []
+                    task_obj = {
+                        "id": str(uuid.uuid4()),
+                        "task": new_task.strip(),
+                        "completed": False,
+                        "timestamp": datetime.datetime.now().isoformat(),
+                        "completed_at": None
+                    }
+                    st.session_state.data["todo"].append(task_obj)
+                    save_user_data(user_id, st.session_state.data)
+                    st.success("Task added successfully!")
+                    st.experimental_rerun()
 
         st.markdown("---")
         if "todo" in st.session_state.data and st.session_state.data["todo"]:
