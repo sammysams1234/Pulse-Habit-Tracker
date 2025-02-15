@@ -1154,7 +1154,7 @@ with tab_todo:
             if task.get("completed") and task.get("completed_at")
         ]
         if not completed_tasks:
-            st.info("No tasks completed yet.")
+            st.info("No tasks completed yet. Remember to set some time aside to work on your goals!")
         else:
             grouped_tasks = {}
             for task in completed_tasks:
