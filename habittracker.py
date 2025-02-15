@@ -740,7 +740,7 @@ with tab_analytics:
         with col_center:
             st.markdown(f"### {selected_year}")
         with col_next:
-            if st.button("Next Year", key="next_year"):
+            if st.button("Next Year ▶", key="next_year"):
                 st.session_state.tracker_year += 1
     
         mask_current = (df["date"].dt.year == selected_year)
