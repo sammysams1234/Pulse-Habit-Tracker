@@ -1100,7 +1100,7 @@ with tab_todo:
                     else:
                         st.stop()
         else:
-            st.info("No tasks added yet.")
+            st.info("No tasks added yet. You can add one by entering a new task above!")
 
         # Default daily summary of completed tasks
         st.markdown("---")
