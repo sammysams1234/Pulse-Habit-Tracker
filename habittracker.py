@@ -85,7 +85,10 @@ def get_base64_image(image_path):
 # COOKIE MANAGER SETUP
 # -------------------------------
 from streamlit_cookies_manager import EncryptedCookieManager
-cookie_secret = st.secrets["general"]["COOKIE_SECRET"]
+cookie_secret = st.secrets.get("general", {}).get("COOKIE_SECRET")
+if not cookie_secret:
+    st.error("COOKIE_SECRET not found in st.secrets. Please add it to your secrets.toml under [general].")
+    st.stop()
 cookies = EncryptedCookieManager(prefix="pulse_app", password=cookie_secret)
 
 if not cookies.ready():
@@ -95,7 +98,7 @@ if not cookies.ready():
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
-# Check for a persistent login token in the cookies.
+# Check for a persistent login token.
 if cookies.get("login_token") and not st.session_state.logged_in:
     st.session_state.logged_in = True
     st.session_state.username = cookies.get("username")
@@ -190,9 +193,8 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
                 if success:
                     st.session_state.logged_in = True
                     st.session_state.username = username
-                    st.session_state.name = display_name  # keep display name for later use
+                    st.session_state.name = display_name  
                     st.session_state.page = "Pulse"
-                    # Set persistent cookie upon successful login.
                     token = str(uuid.uuid4())
                     cookies["login_token"] = token
                     cookies["username"] = username
@@ -236,7 +238,6 @@ def shift_month(date_obj, delta):
 def compute_current_streak(habit_data, today):
     streak = 0
     d = today
-    # If today's entry is missing, start counting from yesterday.
     if d.strftime("%Y-%m-%d") not in habit_data:
         d -= datetime.timedelta(days=1)
     while True:
@@ -381,12 +382,8 @@ tab_pulse, tab_analytics, tab_journal = st.tabs(["Weekly Habit Tracker 📆", "A
 # TAB: PULSE (Main Habit Tracker)
 # =====================================================
 with tab_pulse:
-    # Header for this tab
     components.html(build_header_html("Pulse Weekly Habit Tracker"), height=150)
 
-    # -------------------------------
-    # Manage Habits Section
-    # -------------------------------
     with st.expander("Manage Habits", expanded=False):
         st.subheader("Add Habit")
         new_habit = st.text_input("Habit", key="new_habit_input")
@@ -425,9 +422,6 @@ with tab_pulse:
         else:
             st.info("No habits available yet.")
 
-    # -------------------------------
-    # Habit Tracker Section (Weekly Editing)
-    # -------------------------------
     if st.session_state.data["habits"]:
         week_start = today - datetime.timedelta(days=today.weekday())
         week_dates = [week_start + datetime.timedelta(days=i) for i in range(7)]
@@ -458,7 +452,6 @@ with tab_pulse:
                     save_user_data(user_id, st.session_state.data)
                     update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
             
-            # Display streaks
             streak_data = st.session_state.data.get("streaks", {}).get(habit, {})
             current_streak = streak_data.get("current", 0)
             longest_streak = streak_data.get("longest", 0)
@@ -472,12 +465,8 @@ with tab_pulse:
 with tab_analytics:
     components.html(build_header_html("Pulse Analytics"), height=150)
     
-    # Use tabs for Weekly, Monthly, and Yearly views
     analytics_tabs = st.tabs(["Weekly", "Monthly", "Yearly"])
     
-    # -----------------------------
-    # WEEKLY VIEW
-    # -----------------------------
     with analytics_tabs[0]:
         current_week_start = st.session_state.tracker_week
         current_week_end = current_week_start + datetime.timedelta(days=6)
@@ -493,7 +482,6 @@ with tab_analytics:
     
         last_week_start = current_week_start - datetime.timedelta(days=7)
         last_week_end = current_week_start - datetime.timedelta(days=1)
-        # Build DataFrame from habit tracking successes
         records = []
         for habit, days in st.session_state.data["habits"].items():
             for date_str, outcome in days.items():
@@ -516,7 +504,6 @@ with tab_analytics:
         current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
         last_summary = df_last.groupby("habit").size().reset_index(name="last_success_count")
     
-        # Ensure every habit is represented
         for habit in st.session_state.data["habits"].keys():
             if habit not in current_summary["habit"].values:
                 current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
@@ -528,7 +515,6 @@ with tab_analytics:
         summary_compare["last_success_count"] = summary_compare["last_success_count"].astype(int)
         summary_compare["goal"] = summary_compare["habit"].apply(lambda h: int(st.session_state.data["goals"].get(h, 0)))
     
-        # Show top metrics
         cols = st.columns(3)
         sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
         for idx, row in sorted_compare.iterrows():
@@ -540,10 +526,8 @@ with tab_analytics:
             col = cols[idx % 3]
             col.metric(label=habit, value=value_str, delta=delta_str)
     
-        # Create sub-tabs for bar chart and heatmap
         weekly_sub_tabs = st.tabs(["Progress Bar Chart", "Progress Heatmap"])
     
-        # Bar Chart for Weekly View
         with weekly_sub_tabs[0]:
             melt_compare = summary_compare.melt(
                 id_vars="habit", 
@@ -571,7 +555,6 @@ with tab_analytics:
             )
             st.plotly_chart(fig_compare, use_container_width=True)
     
-        # Heatmap for Weekly View
         with weekly_sub_tabs[1]:
             week_dates = [current_week_start + datetime.timedelta(days=i) for i in range(7)]
             heatmap_data_weekly = []
@@ -616,9 +599,6 @@ with tab_analytics:
             )
             st.plotly_chart(fig_heatmap_weekly, use_container_width=True)
     
-    # -----------------------------
-    # MONTHLY VIEW
-    # -----------------------------
     with analytics_tabs[1]:
         current_month_start = st.session_state.tracker_month
         year = current_month_start.year
@@ -660,7 +640,6 @@ with tab_analytics:
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
     
-        # Approximate monthly goal by multiplying the weekly goal
         summary_compare["goal"] = summary_compare["habit"].apply(
             lambda h: int(st.session_state.data["goals"].get(h, 0) / 7 * num_days)
         )
@@ -749,9 +728,6 @@ with tab_analytics:
             )
             st.plotly_chart(fig_heatmap, use_container_width=True)
     
-    # -----------------------------
-    # YEARLY VIEW
-    # -----------------------------
     with analytics_tabs[2]:
         if "tracker_year" not in st.session_state:
             st.session_state.tracker_year = today.year
@@ -874,13 +850,8 @@ with tab_analytics:
 # =====================================================
 with tab_journal:
     components.html(build_header_html("Pulse Journal"), height=150)
-    
-    # Create two main tabs: one for Journal Entry and one for Journal Summary
     journal_main_tabs = st.tabs(["Journal Entry", "Journal Summary"])
     
-    # -----------------------------
-    # Journal Entry Tab
-    # -----------------------------
     with journal_main_tabs[0]:
         today = datetime.date.today()
         today_str = today.strftime("%Y-%m-%d")
@@ -906,12 +877,8 @@ with tab_journal:
                 save_journal_entry(today_str, entry)
                 st.success(f"Journal entry for {today_str} saved successfully!")
     
-    # -----------------------------
-    # Journal Summary Tab
-    # -----------------------------
     with journal_main_tabs[1]:
         st.subheader("Get Journal Summary")
-        # Create sub-tabs for Daily, Weekly, and Monthly summaries
         journal_summary_tabs = st.tabs(["Daily", "Weekly", "Monthly"])
     
         with journal_summary_tabs[0]:
@@ -957,9 +924,6 @@ with tab_journal:
                         st.subheader("Monthly Summary")
                         st.write(summary)
     
-    # -----------------------------
-    # Expander: Show Past Journal Entries
-    # -----------------------------
     with st.expander("Show Past Journal Entries"):
         all_entries = fetch_journal_entries()
         if not all_entries:
