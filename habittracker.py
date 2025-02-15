@@ -27,6 +27,15 @@ st.set_page_config(
 )
 
 # -------------------------------
+# HELPER FUNCTION: Safe Rerun
+# -------------------------------
+def safe_rerun():
+    if hasattr(st, "experimental_rerun"):
+        st.experimental_rerun()
+    else:
+        st.stop()
+
+# -------------------------------
 # INITIALIZE FIREBASE (if needed)
 # -------------------------------
 if not firebase_admin._apps:
@@ -480,10 +489,7 @@ with top_col_right:
         cookies["login_token"] = ""
         cookies["username"] = ""
         cookies.save()
-        if hasattr(st, "experimental_rerun"):
-            st.experimental_rerun()
-        else:
-            st.stop()
+        safe_rerun()
 
 # =====================================================
 # CREATE TOP TABS
@@ -572,10 +578,7 @@ with tab_pulse:
                         st.session_state.data["habit_colors"].pop(habit, None)
                     save_user_data(user_id, st.session_state.data)
                     st.success(f"Habit '{habit}' removed successfully!")
-                    if hasattr(st, "experimental_rerun"):
-                        st.experimental_rerun()
-                    else:
-                        st.stop()
+                    safe_rerun()
         else:
             st.info("You currently have no habits you are tracking. Please add one above.")
 
@@ -1082,13 +1085,13 @@ with tab_todo:
 
         st.markdown("---")
     
-    # Ensure an editing marker is initialized
+        # Ensure an editing marker is initialized
         if "editing_todo" not in st.session_state:
             st.session_state.editing_todo = None
 
         if "todo" in st.session_state.data and st.session_state.data["todo"]:
             for task in st.session_state.data["todo"]:
-            # Check if this task is being edited
+                # Check if this task is being edited
                 if st.session_state.editing_todo == task["id"]:
                     col1, col2, col3 = st.columns([6, 1, 1])
                     new_task_text = col1.text_input("Edit Task", value=task["task"], key="edit_input_"+task["id"])
@@ -1096,16 +1099,13 @@ with tab_todo:
                         task["task"] = new_task_text
                         save_user_data(user_id, st.session_state.data)
                         st.session_state.editing_todo = None
-                        st.experimental_rerun()
+                        safe_rerun()
                     if col3.button("Cancel", key="cancel_"+task["id"]):
                         st.session_state.editing_todo = None
-                        if hasattr(st, "experimental_rerun"):
-                            st.experimental_rerun()
-                        else:
-                            st.stop()
+                        safe_rerun()
                 else:
                     col1, col2, col3, col4 = st.columns([5, 1, 1, 1])
-                # Display the task with a checkbox for completed status
+                    # Display the task with a checkbox for completed status
                     new_completed = col1.checkbox(task["task"], value=task.get("completed", False), key=task["id"])
                     if new_completed != task.get("completed", False):
                         task["completed"] = new_completed
@@ -1116,11 +1116,11 @@ with tab_todo:
                         save_user_data(user_id, st.session_state.data)
                     if col2.button("Edit", key="edit_"+task["id"]):
                         st.session_state.editing_todo = task["id"]
-                        st.experimental_rerun()
+                        safe_rerun()
                     if col3.button("Delete", key="del_"+task["id"]):
                         st.session_state.data["todo"].remove(task)
                         save_user_data(user_id, st.session_state.data)
-                        st.experimental_rerun()
+                        safe_rerun()
         else:
             st.info("No tasks added yet.")
 
@@ -1167,7 +1167,6 @@ with tab_todo:
 
     # ------------------- COMPLETED TASKS BY DATE -------------------
     with todo_main_tabs[2]:
-
         completed_tasks = [
             task for task in st.session_state.data["todo"] 
             if task.get("completed") and task.get("completed_at")
