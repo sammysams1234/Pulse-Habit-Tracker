@@ -476,13 +476,14 @@ top_col_left, top_col_right = st.columns([0.8, 0.2])
 with top_col_right:
     st.markdown(f"**Logged in as {user_id}**")
     if st.button("Logout"):
-        # Clear all session state variables.
-        st.session_state.clear()
-        # Remove the cookies.
-        cookies.delete("login_token")
-        cookies.delete("username")
+        st.session_state.logged_in = False
+        cookies["login_token"] = ""
+        cookies["username"] = ""
         cookies.save()
-        st.experimental_rerun()
+        if hasattr(st, "experimental_rerun"):
+            st.experimental_rerun()
+        else:
+            st.stop()
 
 # =====================================================
 # CREATE TOP TABS
