@@ -426,6 +426,40 @@ def get_summary_for_tasks(tasks, period):
     except Exception as e:
         return f"Error generating summary: {e}"
 
+# -------------------------------
+# NEW HELPER FUNCTION FOR TASK GROUPING
+# -------------------------------
+def get_grouped_tasks_summary(tasks):
+    """
+    Group completed tasks by the date they were ticked off and return a summary text.
+    """
+    if not tasks:
+        return "No tasks completed in this period."
+    
+    grouped_tasks = {}
+    for task in tasks:
+        # Only include tasks that are marked completed and have a completion timestamp.
+        if task.get("completed") and task.get("completed_at"):
+            try:
+                # Parse the completed_at timestamp and get just the date.
+                completed_date = datetime.datetime.fromisoformat(task["completed_at"]).date()
+            except Exception:
+                continue
+            date_str = completed_date.strftime("%Y-%m-%d")
+            grouped_tasks.setdefault(date_str, []).append(task["task"])
+    
+    if not grouped_tasks:
+        return "No tasks completed in this period."
+    
+    summary_text = ""
+    # Sort dates in reverse (most recent first)
+    for date_str in sorted(grouped_tasks.keys(), reverse=True):
+        summary_text += f"**Tasks completed on {date_str}:**\n"
+        for task_desc in grouped_tasks[date_str]:
+            summary_text += f"- {task_desc}\n"
+        summary_text += "\n"
+    return summary_text
+
 # =====================================================
 # LOAD USER DATA (DECRYPTED) & INITIALIZE SESSION STATE
 # =====================================================
@@ -1108,10 +1142,10 @@ with tab_todo:
                 with st.spinner("Generating your weekly task summary..."):
                     tasks_filtered = filter_tasks_by_period(st.session_state.data["todo"], "Weekly", today)
                     if not tasks_filtered:
-                        st.info("No tasks found for this week.")
+                        st.info("No tasks completed this week.")
                     else:
-                        summary = get_summary_for_tasks(tasks_filtered, "Weekly")
-                        st.write(summary)
+                        summary = get_grouped_tasks_summary(tasks_filtered)
+                        st.markdown(summary)
 
         with summary_tabs[1]:
             # Monthly Summary
@@ -1119,10 +1153,10 @@ with tab_todo:
                 with st.spinner("Generating your monthly task summary..."):
                     tasks_filtered = filter_tasks_by_period(st.session_state.data["todo"], "Monthly", today)
                     if not tasks_filtered:
-                        st.info("No tasks found for this month.")
+                        st.info("No tasks completed this month.")
                     else:
-                        summary = get_summary_for_tasks(tasks_filtered, "Monthly")
-                        st.write(summary)
+                        summary = get_grouped_tasks_summary(tasks_filtered)
+                        st.markdown(summary)
 
         with summary_tabs[2]:
             # Yearly Summary
@@ -1130,7 +1164,7 @@ with tab_todo:
                 with st.spinner("Generating your yearly task summary..."):
                     tasks_filtered = filter_tasks_by_period(st.session_state.data["todo"], "Yearly", today)
                     if not tasks_filtered:
-                        st.info("No tasks found for this year.")
+                        st.info("No tasks completed this year.")
                     else:
-                        summary = get_summary_for_tasks(tasks_filtered, "Yearly")
-                        st.write(summary)
+                        summary = get_grouped_tasks_summary(tasks_filtered)
+                        st.markdown(summary)
