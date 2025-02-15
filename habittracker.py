@@ -955,7 +955,7 @@ with tab_journal:
     #  1) Journal Entry
     #  2) Journal Summary
     #  3) Past Journal Entries
-    journal_main_tabs = st.tabs(["Journal Entry", "Journal Summary", "Past Journal Entries"])
+    journal_main_tabs = st.tabs(["Journal Entry", "Journal Summary", "Journal Entries"])
 
     # ---------------- JOURNAL ENTRY ----------------
     with journal_main_tabs[0]:
@@ -1056,7 +1056,7 @@ with tab_todo:
     #  1) Tasks
     #  2) Completed Task Summary
     #  3) Completed Tasks by Date
-    todo_main_tabs = st.tabs(["Tasks", "Completed Task Summary", "Completed Tasks by Date"])
+    todo_main_tabs = st.tabs(["Tasks", "Completed Task Summary", "Completed Tasks Breakdown"])
 
     # ------------------- TASKS -------------------
     with todo_main_tabs[0]:
