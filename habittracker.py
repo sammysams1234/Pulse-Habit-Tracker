@@ -502,7 +502,7 @@ with tab_pulse:
     with st.expander("Manage Habits", expanded=False):
         st.subheader("Add Habit")
         new_habit = st.text_input("Habit", key="new_habit_input")
-        new_goal = st.number_input("Set Weekly Goal", min_value=1, value=1, key="new_goal_input")
+        new_goal = st.number_input("Set Weekly Goal (# times you would like to hit target per week", min_value=1, value=1, key="new_goal_input")
         new_color = st.color_picker("Pick a color", value="#000000", key="new_color_input")
 
         if st.button("Add Habit", key="add_habit_button"):
