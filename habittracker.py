@@ -367,7 +367,7 @@ with tab_pulse:
     with st.expander("Manage Habits", expanded=False):
         st.subheader("Add Habit")
         new_habit = st.text_input("Habit", key="new_habit_input")
-        new_goal = st.number_input("Set Goal", min_value=1, value=1, key="new_goal_input")
+        new_goal = st.number_input("Set Weekly Goal", min_value=1, value=1, key="new_goal_input")
         if st.button("Add Habit"):
             new_habit = new_habit.strip()
             if not new_habit:
