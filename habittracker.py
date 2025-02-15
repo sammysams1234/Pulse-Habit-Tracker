@@ -361,10 +361,8 @@ def get_summary_for_entries(entries_text, period):
     try:
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a supportive and motivational journaling assistant."},
-                {"role": "user", "content": prompt}
-            ],
+            messages=[{"role": "system", "content": "You are a supportive and motivational journaling assistant."},
+                      {"role": "user", "content": prompt}],
             temperature=0.7,
             max_tokens=250
         )
@@ -436,10 +434,8 @@ def get_ai_tasks_summary(grouped_text, period):
     try:
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a motivational productivity assistant."},
-                {"role": "user", "content": prompt}
-            ],
+            messages=[{"role": "system", "content": "You are a motivational productivity assistant."},
+                      {"role": "user", "content": prompt}],
             temperature=0.7,
             max_tokens=250
         )
@@ -456,11 +452,12 @@ if "data" not in st.session_state:
     st.session_state.data = load_user_data(user_id)
 if "tracker_month" not in st.session_state:
     st.session_state.tracker_month = datetime.date.today().replace(day=1)
-if "analytics_view" not in st.session_state:
-    st.session_state.analytics_view = "Weekly"
 if "tracker_week" not in st.session_state:
     today = datetime.date.today()
     st.session_state.tracker_week = today - datetime.timedelta(days=today.weekday())
+# Initialize tracker_year for yearly analytics
+if "tracker_year" not in st.session_state:
+    st.session_state.tracker_year = datetime.date.today().replace(month=1, day=1)
 
 today = datetime.date.today()
 today_str = today.strftime("%Y-%m-%d")
@@ -656,7 +653,7 @@ with tab_analytics:
     else:
         df = pd.DataFrame(columns=["habit", "date"])
 
-    analytics_tabs = st.tabs(["Weekly", "Monthly"])
+    analytics_tabs = st.tabs(["Weekly", "Monthly", "Yearly"])
     
     # ----------------- WEEKLY ANALYTICS -----------------
     with analytics_tabs[0]:
@@ -950,6 +947,135 @@ with tab_analytics:
                 template="plotly_white"
             )
             st.plotly_chart(fig_heatmap, use_container_width=True, key="monthly_heatmap_chart")
+
+    # ----------------- YEARLY ANALYTICS -----------------
+    with analytics_tabs[2]:
+        current_year_start = st.session_state.tracker_year
+        current_year = current_year_start.year
+        # Determine if it's a leap year
+        year_length = 366 if calendar.isleap(current_year) else 365
+        current_year_end = datetime.date(current_year, 12, 31)
+
+        col_prev, col_center, col_next = st.columns([1, 2, 1])
+        with col_prev:
+            if st.button("◀ Previous Year", key="prev_year"):
+                st.session_state.tracker_year = datetime.date(current_year - 1, 1, 1)
+        with col_center:
+            st.markdown(f"### {current_year}")
+        with col_next:
+            if st.button("Next Year ▶", key="next_year"):
+                st.session_state.tracker_year = datetime.date(current_year + 1, 1, 1)
+
+        prev_year = current_year - 1
+        prev_year_start = datetime.date(prev_year, 1, 1)
+        prev_year_end = datetime.date(prev_year, 12, 31)
+
+        if not df.empty:
+            df["date"] = pd.to_datetime(df["date"])
+            mask_current = (df["date"].dt.date >= current_year_start) & (df["date"].dt.date <= current_year_end)
+            mask_prev = (df["date"].dt.date >= prev_year_start) & (df["date"].dt.date <= prev_year_end)
+            df_current = df[mask_current]
+            df_prev = df[mask_prev]
+        else:
+            df_current = pd.DataFrame(columns=["habit", "date"])
+            df_prev = pd.DataFrame(columns=["habit", "date"])
+
+        current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
+        prev_summary = df_prev.groupby("habit").size().reset_index(name="prev_success_count")
+
+        for habit in st.session_state.data["habits"].keys():
+            if habit not in current_summary["habit"].values:
+                current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
+            if habit not in prev_summary["habit"].values:
+                prev_summary = pd.concat([prev_summary, pd.DataFrame([{"habit": habit, "prev_success_count": 0}])], ignore_index=True)
+
+        summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
+        summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
+        summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
+        # Estimate yearly goal based on weekly goal scaled to the year
+        summary_compare["goal"] = summary_compare["habit"].apply(
+            lambda h: int(st.session_state.data["goals"].get(h, 0) / 7 * year_length)
+        )
+
+        cols = st.columns(3)
+        sorted_compare = summary_compare.sort_values("habit").reset_index(drop=True)
+        for idx, row in sorted_compare.iterrows():
+            habit = row["habit"]
+            goal_val = row["goal"]
+            delta_str = f"{row['current_success_count'] - row['prev_success_count']:+}" if row["prev_success_count"] > 0 else "N/A"
+            current_pct = (row["current_success_count"] / goal_val * 100) if goal_val > 0 else 0
+            value_str = f"{row['current_success_count']} / {goal_val} ({int(current_pct)}%)"
+            col = cols[idx % 3]
+            col.metric(label=habit, value=value_str, delta=delta_str)
+
+        yearly_sub_tabs = st.tabs(["Progress Bar Chart", "Monthly Heatmap"])
+        
+        # --- YEARLY BAR CHART ---
+        with yearly_sub_tabs[0]:
+            melt_compare = summary_compare.melt(
+                id_vars="habit", 
+                value_vars=["current_success_count", "prev_success_count", "goal"],
+                var_name="Metric", 
+                value_name="Count"
+            )
+            melt_compare["Metric"] = melt_compare["Metric"].map({
+                "current_success_count": "Current Year",
+                "prev_success_count": "Previous Year",
+                "goal": "Goal"
+            })
+            fig_compare = px.bar(
+                melt_compare,
+                x="habit",
+                y="Count",
+                color="Metric",
+                barmode="group",
+                color_discrete_map={
+                    "Current Year": "#64b5f6",
+                    "Previous Year": "#0d47a1",
+                    "Goal": "#2E7D32"
+                },
+                template="plotly_white"
+            )
+            st.plotly_chart(fig_compare, use_container_width=True, key="yearly_bar_chart")
+
+        # --- YEARLY HEATMAP ---
+        # For the yearly heatmap, we aggregate monthly successes for each habit.
+        with yearly_sub_tabs[1]:
+            month_names = [calendar.month_abbr[m] for m in range(1, 13)]
+            heatmap_data_yearly = []
+            hover_data_yearly = []
+            for habit in st.session_state.data["habits"].keys():
+                monthly_counts = []
+                monthly_hover = []
+                for m in range(1, 13):
+                    # Get the number of successes in month m of the current year
+                    start_date = datetime.date(current_year, m, 1)
+                    end_day = calendar.monthrange(current_year, m)[1]
+                    end_date = datetime.date(current_year, m, end_day)
+                    mask = (df["date"].dt.date >= start_date) & (df["date"].dt.date <= end_date)
+                    habit_mask = df[mask]["habit"] == habit
+                    count = df[mask][habit_mask].shape[0]
+                    monthly_counts.append(count)
+                    monthly_hover.append(f"{month_names[m-1]}: {count} successes")
+                heatmap_data_yearly.append(monthly_counts)
+                hover_data_yearly.append(monthly_hover)
+            
+            fig_heatmap_yearly = go.Figure(data=go.Heatmap(
+                z=heatmap_data_yearly,
+                x=month_names,
+                y=list(st.session_state.data["habits"].keys()),
+                text=heatmap_data_yearly,
+                hovertext=hover_data_yearly,
+                hoverinfo="text",
+                colorscale="Blues",
+                showscale=True
+            ))
+            fig_heatmap_yearly.update_layout(
+                xaxis=dict(showgrid=False),
+                yaxis=dict(showgrid=False),
+                template="plotly_white"
+            )
+            st.plotly_chart(fig_heatmap_yearly, use_container_width=True, key="yearly_heatmap_chart")
 
 # =====================================================
 # TAB: JOURNAL (Well Being Journal)
