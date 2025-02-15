@@ -90,7 +90,6 @@ if not cookie_secret:
     st.error("COOKIE_SECRET not found in st.secrets. Please add it to your secrets.toml under [general].")
     st.stop()
 cookies = EncryptedCookieManager(prefix="pulse_app", password=cookie_secret)
-
 if not cookies.ready():
     st.stop()
 
@@ -332,13 +331,11 @@ def build_entries_text(entries):
 def get_summary_for_entries(entries_text, period):
     if not entries_text.strip():
         return "No journal entries to summarize."
-    
     prompt = (
         f"Please summarize the following journal entries for a {period.lower()} period. "
         "Focus on the emotional tone, the main feelings expressed, and possible underlying causes. "
-        "Write as if you are talking to the user. "
-        "Provide a brief motivational conclusion. **Do not prepend any heading like 'Summary:'. "
-        "Only return the summary text.**\n\n"
+        "Write as if you are talking to the user. Provide a brief motivational conclusion. "
+        "Do not prepend any heading like 'Summary:'. Only return the summary text.\n\n"
         f"{entries_text}"
     )
     try:
@@ -372,7 +369,6 @@ def filter_tasks_by_period(tasks, period, today):
         end = datetime.date(today.year, 12, 31)
     else:
         return tasks
-
     for task in tasks:
         created_date = datetime.datetime.fromisoformat(task["timestamp"]).date()
         completed_date = None
@@ -394,8 +390,7 @@ def get_summary_for_tasks(tasks, period):
         tasks_text += f"Task: {task['task']} | Status: {status} | Date: {date_field}\n"
     prompt = (
         f"Please summarize the following to-do tasks for a {period.lower()} period. "
-        "Focus on which tasks were completed only. "
-        "Provide actionable insights and encouragement. "
+        "Focus on which tasks were completed only. Provide actionable insights and encouragement. "
         "Do not add any headings; only return the summary text.\n\n" + tasks_text
     )
     try:
@@ -403,7 +398,7 @@ def get_summary_for_tasks(tasks, period):
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful productivity assistant."},
-                {"role": "user", "content": prompt},
+                {"role": "user", "content": prompt}
             ],
             temperature=0.7,
             max_tokens=250
@@ -416,7 +411,6 @@ def get_summary_for_tasks(tasks, period):
 def get_ai_tasks_summary(grouped_text, period):
     if not grouped_text.strip():
         return f"No tasks completed this {period.lower()}."
-    
     prompt = (
         f"Based on the following log of tasks completed during the {period.lower()} period, "
         "please provide a summary that highlights what was accomplished and offers an encouraging message. "
@@ -442,7 +436,6 @@ def get_ai_tasks_summary(grouped_text, period):
 def get_grouped_tasks_summary(tasks):
     if not tasks:
         return ""
-    
     grouped_tasks = {}
     for task in tasks:
         if task.get("completed") and task.get("completed_at"):
@@ -452,7 +445,6 @@ def get_grouped_tasks_summary(tasks):
                 continue
             date_str = completed_date.strftime("%Y-%m-%d")
             grouped_tasks.setdefault(date_str, []).append(task["task"])
-    
     summary_text = ""
     for date_str in sorted(grouped_tasks.keys(), reverse=True):
         summary_text += f"Tasks completed on {date_str}: " + ", ".join(grouped_tasks[date_str]) + "\n"
@@ -492,7 +484,6 @@ tab_pulse, tab_analytics, tab_journal, tab_todo = st.tabs([
 # =====================================================
 with tab_pulse:
     components.html(build_header_html("Pulse Weekly Habit Tracker"), height=150)
-
     with st.expander("Manage Habits", expanded=False):
         st.subheader("Add Habit")
         new_habit = st.text_input("Habit", key="new_habit_input")
@@ -509,7 +500,6 @@ with tab_pulse:
                 update_streaks_for_habit(user_id, new_habit, st.session_state.data["habits"][new_habit], today)
                 save_user_data(user_id, st.session_state.data)
                 st.success(f"Habit '{new_habit}' added successfully!")
-        
         st.subheader("Manage Habits")
         if st.session_state.data["habits"]:
             for habit in list(st.session_state.data["habits"].keys()):
@@ -530,7 +520,6 @@ with tab_pulse:
                     st.success(f"Habit '{habit}' removed successfully!")
         else:
             st.info("No habits available yet.")
-
     if st.session_state.data["habits"]:
         week_start = today - datetime.timedelta(days=today.weekday())
         week_dates = [week_start + datetime.timedelta(days=i) for i in range(7)]
@@ -541,7 +530,6 @@ with tab_pulse:
             header_cols[i+1].markdown(f"**{d.strftime('%a')}**")
         header_cols[8].markdown("**Current Streak**")
         header_cols[9].markdown("**Longest Streak**")
-        
         habits = list(st.session_state.data["habits"].keys())
         for habit in habits:
             row_cols = st.columns(10)
@@ -560,7 +548,6 @@ with tab_pulse:
                         st.session_state.data["habits"][habit][date_str] = new
                     save_user_data(user_id, st.session_state.data)
                     update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
-            
             streak_data = st.session_state.data.get("streaks", {}).get(habit, {})
             current_streak = streak_data.get("current", 0)
             longest_streak = streak_data.get("longest", 0)
@@ -573,7 +560,6 @@ with tab_pulse:
 # =====================================================
 with tab_analytics:
     components.html(build_header_html("Pulse Analytics"), height=150)
-    
     records = []
     for habit, days_dict in st.session_state.data["habits"].items():
         for date_str, outcome in days_dict.items():
@@ -587,7 +573,6 @@ with tab_analytics:
         df = pd.DataFrame(records)
     else:
         df = pd.DataFrame(columns=["habit", "date"])
-
     analytics_tabs = st.tabs(["Weekly", "Monthly", "Yearly"])
     with analytics_tabs[0]:
         current_week_start = st.session_state.tracker_week
@@ -601,7 +586,6 @@ with tab_analytics:
         with col_next:
             if st.button("Next Week ▶", key="next_week"):
                 st.session_state.tracker_week += datetime.timedelta(days=7)
-
         last_week_start = current_week_start - datetime.timedelta(days=7)
         last_week_end = current_week_start - datetime.timedelta(days=1)
         if not df.empty:
@@ -613,7 +597,6 @@ with tab_analytics:
         else:
             df_current = pd.DataFrame(columns=["habit", "date"])
             df_last = pd.DataFrame(columns=["habit", "date"])
-
         current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
         last_summary = df_last.groupby("habit").size().reset_index(name="last_success_count")
         for habit in st.session_state.data["habits"].keys():
@@ -785,8 +768,9 @@ with tab_analytics:
             days = [datetime.date(year, month, d) for d in range(1, num_days+1)]
             heatmap_data = []
             text_data = []
-            # Ensure df_current["date"] is datetime
-            if not df_current.empty:
+            # Force conversion of df_current["date"] even if empty
+            if "date" in df_current.columns:
+                df_current = df_current.copy()
                 df_current["date"] = pd.to_datetime(df_current["date"], errors="coerce")
             for habit in st.session_state.data["habits"].keys():
                 row = []
@@ -902,7 +886,9 @@ with tab_analytics:
             month_names = [calendar.month_abbr[m] for m in months]
             heatmap_data = []
             text_data = []
-            if not df_current.empty:
+            # Force conversion of df_current["date"] even if empty
+            if "date" in df_current.columns:
+                df_current = df_current.copy()
                 df_current["date"] = pd.to_datetime(df_current["date"], errors="coerce")
             for habit in st.session_state.data["habits"].keys():
                 row = []
@@ -943,36 +929,27 @@ with tab_analytics:
 with tab_journal:
     components.html(build_header_html("Pulse Journal"), height=150)
     journal_main_tabs = st.tabs(["Journal Entry", "Journal Summary"])
-    
     with journal_main_tabs[0]:
         today = datetime.date.today()
         today_str = today.strftime("%Y-%m-%d")
         st.subheader(f"Journal Entry for {today_str}")
-    
         existing_entry = get_journal_entry(today_str)
         default_feeling = existing_entry.get("feeling", "") if existing_entry else ""
         default_cause = existing_entry.get("cause", "") if existing_entry else ""
-    
         with st.form("journal_entry_form"):
             st.write("Record your feelings and possible causes below:")
             feeling_input = st.text_area("How are you feeling today?", value=default_feeling, height=120)
             cause_input = st.text_area("What do you think is causing these feelings?", value=default_cause, height=120)
             submitted = st.form_submit_button("Save Journal Entry")
             if submitted:
-                entry = {
-                    "feeling": feeling_input,
-                    "cause": cause_input,
-                    "timestamp": datetime.datetime.now().isoformat()
-                }
+                entry = {"feeling": feeling_input, "cause": cause_input, "timestamp": datetime.datetime.now().isoformat()}
                 if existing_entry and "summary" in existing_entry:
                     entry["summary"] = existing_entry["summary"]
                 save_journal_entry(today_str, entry)
                 st.success(f"Journal entry for {today_str} saved successfully!")
-    
     with journal_main_tabs[1]:
         st.subheader("Get Journal Summary")
         journal_summary_tabs = st.tabs(["Daily", "Weekly", "Monthly"])
-    
         with journal_summary_tabs[0]:
             if st.button("Generate Daily Summary", key="daily_summary"):
                 with st.spinner("Fetching and summarizing your journal entries..."):
@@ -989,7 +966,6 @@ with tab_journal:
                         daily_entry["summary"] = summary
                         save_journal_entry(today_str, daily_entry)
                         st.info("Daily summary has been saved to your journal entry.")
-    
         with journal_summary_tabs[1]:
             if st.button("Generate Weekly Summary", key="weekly_summary"):
                 with st.spinner("Fetching and summarizing your journal entries..."):
@@ -1002,7 +978,6 @@ with tab_journal:
                         summary = get_summary_for_entries(entries_text, "Weekly")
                         st.subheader("Weekly Summary")
                         st.write(summary)
-    
         with journal_summary_tabs[2]:
             if st.button("Generate Monthly Summary", key="monthly_summary"):
                 with st.spinner("Fetching and summarizing your journal entries..."):
@@ -1015,21 +990,20 @@ with tab_journal:
                         summary = get_summary_for_entries(entries_text, "Monthly")
                         st.subheader("Monthly Summary")
                         st.write(summary)
-    
-    with st.expander("Show Past Journal Entries"):
-        all_entries = fetch_journal_entries()
-        if not all_entries:
-            st.info("No journal entries recorded yet.")
-        else:
-            for date_str in sorted(all_entries.keys(), reverse=True):
-                entry = all_entries[date_str]
-                st.markdown(f"### {date_str}")
-                st.markdown(f"**Feeling:** {entry.get('feeling', 'N/A')}")
-                st.markdown(f"**Cause:** {entry.get('cause', 'N/A')}")
-                summary_text = entry.get("summary")
-                if summary_text:
-                    st.markdown("#### <u>Summary</u>", unsafe_allow_html=True)
-                    st.markdown(summary_text)
+        with st.expander("Show Past Journal Entries"):
+            all_entries = fetch_journal_entries()
+            if not all_entries:
+                st.info("No journal entries recorded yet.")
+            else:
+                for date_str in sorted(all_entries.keys(), reverse=True):
+                    entry = all_entries[date_str]
+                    st.markdown(f"### {date_str}")
+                    st.markdown(f"**Feeling:** {entry.get('feeling', 'N/A')}")
+                    st.markdown(f"**Cause:** {entry.get('cause', 'N/A')}")
+                    summary_text = entry.get("summary")
+                    if summary_text:
+                        st.markdown("#### <u>Summary</u>", unsafe_allow_html=True)
+                        st.markdown(summary_text)
 
 # =====================================================
 # TAB: TO DO LIST (Task Management & GPT Summaries)
@@ -1037,7 +1011,6 @@ with tab_journal:
 with tab_todo:
     components.html(build_header_html("Pulse To-Do"), height=150)
     todo_main_tabs = st.tabs(["Tasks", "Task Summary"])
-    
     with todo_main_tabs[0]:
         st.subheader("Your To-Do List")
         new_task = st.text_input("Enter a new task", key="new_todo_task")
@@ -1057,9 +1030,7 @@ with tab_todo:
                 st.session_state.data["todo"].append(task_obj)
                 save_user_data(user_id, st.session_state.data)
                 st.success("Task added successfully!")
-    
         st.markdown("---")
-    
         if "todo" in st.session_state.data and st.session_state.data["todo"]:
             for task in st.session_state.data["todo"]:
                 col1, col2, col3 = st.columns([6, 1, 1])
@@ -1078,7 +1049,6 @@ with tab_todo:
                         st.experimental_rerun()
         else:
             st.info("No tasks added yet.")
-    
         with st.expander("Show Completed Tasks by Date"):
             completed_tasks = [task for task in st.session_state.data["todo"] if task.get("completed") and task.get("completed_at")]
             if not completed_tasks:
@@ -1096,11 +1066,9 @@ with tab_todo:
                     st.markdown(f"### {date_str}")
                     for task_desc in grouped_tasks[date_str]:
                         st.markdown(f"- {task_desc}")
-    
     with todo_main_tabs[1]:
         st.subheader("Get Task Summary")
         summary_tabs = st.tabs(["Weekly", "Monthly", "Yearly"])
-    
         with summary_tabs[0]:
             if st.button("Generate Weekly Task Summary", key="weekly_todo_summary"):
                 with st.spinner("Generating your weekly task summary..."):
@@ -1112,7 +1080,6 @@ with tab_todo:
                         summary = get_ai_tasks_summary(grouped_text, "Weekly")
                         st.subheader("Weekly Task Summary")
                         st.write(summary)
-    
         with summary_tabs[1]:
             if st.button("Generate Monthly Task Summary", key="monthly_todo_summary"):
                 with st.spinner("Generating your monthly task summary..."):
@@ -1124,7 +1091,6 @@ with tab_todo:
                         summary = get_ai_tasks_summary(grouped_text, "Monthly")
                         st.subheader("Monthly Task Summary")
                         st.write(summary)
-    
         with summary_tabs[2]:
             if st.button("Generate Yearly Task Summary", key="yearly_todo_summary"):
                 with st.spinner("Generating your yearly task summary..."):
