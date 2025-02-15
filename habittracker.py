@@ -1029,7 +1029,6 @@ with tab_journal:
 
     # ---------------- PAST JOURNAL ENTRIES ----------------
     with journal_main_tabs[2]:
-        st.subheader("Journal Entries")
         all_entries = fetch_journal_entries()
         if not all_entries:
             st.info("No journal entries recorded yet.")
