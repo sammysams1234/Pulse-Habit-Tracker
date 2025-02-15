@@ -475,12 +475,11 @@ for habit in st.session_state.data["habits"]:
 top_col_left, top_col_right = st.columns([0.8, 0.2])
 with top_col_right:
     st.markdown(f"**Logged in as {user_id}**")
-    if st.button("Logout"):
+    if st.button("I quit"):
         st.session_state.logged_in = False
         cookies["login_token"] = ""
         cookies["username"] = ""
         cookies.save()
-        # Use a fallback for rerun
         if hasattr(st, "experimental_rerun"):
             st.experimental_rerun()
         else:
@@ -488,10 +487,6 @@ with top_col_right:
 
 # =====================================================
 # CREATE TOP TABS
-#  1) Weekly Habit Tracker
-#  2) Analytics
-#  3) Well Being Journal
-#  4) To Do List
 # =====================================================
 tab_pulse, tab_analytics, tab_journal, tab_todo = st.tabs([
     "Weekly Habit Tracker 📆", 
@@ -577,7 +572,6 @@ with tab_pulse:
                         st.session_state.data["habit_colors"].pop(habit, None)
                     save_user_data(user_id, st.session_state.data)
                     st.success(f"Habit '{habit}' removed successfully!")
-                    # optional rerun
                     if hasattr(st, "experimental_rerun"):
                         st.experimental_rerun()
                     else:
@@ -688,7 +682,6 @@ with tab_analytics:
         current_summary = df_current.groupby("habit").size().reset_index(name="current_success_count")
         last_summary = df_last.groupby("habit").size().reset_index(name="last_success_count")
 
-        # Ensure all habits appear
         for habit in st.session_state.data["habits"].keys():
             if habit not in current_summary["habit"].values:
                 current_summary = pd.concat([current_summary, pd.DataFrame([{"habit": habit, "current_success_count": 0}])], ignore_index=True)
@@ -959,10 +952,9 @@ with tab_analytics:
 with tab_journal:
     components.html(build_header_html("Pulse Journal"), height=150)
 
-    # We now have three tabs:
     #  1) Journal Entry
     #  2) Journal Summary
-    #  3) Past Journal Entries (moved from expander)
+    #  3) Past Journal Entries
     journal_main_tabs = st.tabs(["Journal Entry", "Journal Summary", "Past Journal Entries"])
 
     # ---------------- JOURNAL ENTRY ----------------
@@ -974,6 +966,7 @@ with tab_journal:
         existing_entry = get_journal_entry(today_str)
         default_feeling = existing_entry.get("feeling", "") if existing_entry else ""
         default_cause = existing_entry.get("cause", "") if existing_entry else ""
+        daily_summary = existing_entry.get("summary") if existing_entry else None
 
         with st.form("journal_entry_form"):
             st.write("Record your feelings and possible causes below:")
@@ -987,32 +980,25 @@ with tab_journal:
                     "cause": cause_input, 
                     "timestamp": datetime.datetime.now().isoformat()
                 }
-                if existing_entry and "summary" in existing_entry:
-                    entry["summary"] = existing_entry["summary"]
-                
-                save_journal_entry(today_str, entry)
                 st.success(f"Journal entry for {today_str} saved successfully!")
 
-                # Automatically generate daily summary if there's text
+                # If there's text, generate a new daily summary
                 if feeling_input.strip() or cause_input.strip():
                     entries_text = build_entries_text({today_str: entry})
                     daily_summary = get_summary_for_entries(entries_text, "Daily")
                     entry["summary"] = daily_summary
-                    save_journal_entry(today_str, entry)
 
-                    st.subheader("Daily Summary")
-                    st.write(daily_summary)
+                save_journal_entry(today_str, entry)
 
-        # If an existing entry has a summary, display it
-        existing_entry = get_journal_entry(today_str)
-        if existing_entry and existing_entry.get("summary"):
+        # Show the daily summary (if any) only once here
+        if daily_summary:
             st.subheader("Daily Summary")
-            st.write(existing_entry["summary"])
+            st.write(daily_summary)
 
     # ---------------- JOURNAL SUMMARY ----------------
     with journal_main_tabs[1]:
         st.subheader("Get Journal Summary (Weekly or Monthly)")
-        journal_summary_tabs = st.tabs(["Weekly", "Monthly"])  # Only weekly/monthly
+        journal_summary_tabs = st.tabs(["Weekly", "Monthly"])
 
         # --- WEEKLY SUMMARY ---
         with journal_summary_tabs[0]:
@@ -1049,15 +1035,17 @@ with tab_journal:
         if not all_entries:
             st.info("No journal entries recorded yet.")
         else:
+            # Sort in descending order
             for date_str in sorted(all_entries.keys(), reverse=True):
                 entry = all_entries[date_str]
-                st.markdown(f"### {date_str}")
+                st.markdown(f"### **{date_str}**")
                 st.markdown(f"**Feeling:** {entry.get('feeling', 'N/A')}")
                 st.markdown(f"**Cause:** {entry.get('cause', 'N/A')}")
                 summary_text = entry.get("summary")
                 if summary_text:
-                    st.markdown("#### <u>Summary</u>", unsafe_allow_html=True)
+                    st.markdown("#### Summary")
                     st.markdown(summary_text)
+                st.markdown("---")  # horizontal line for clarity
 
 # =====================================================
 # TAB: TO DO LIST
@@ -1065,10 +1053,9 @@ with tab_journal:
 with tab_todo:
     components.html(build_header_html("Pulse To-Do"), height=150)
 
-    # Now we have three tabs: 
     #  1) Tasks
     #  2) Completed Task Summary
-    #  3) Completed Tasks by Date (moved from expander)
+    #  3) Completed Tasks by Date
     todo_main_tabs = st.tabs(["Tasks", "Completed Task Summary", "Completed Tasks by Date"])
 
     # ------------------- TASKS -------------------
@@ -1092,7 +1079,6 @@ with tab_todo:
                 st.session_state.data["todo"].append(task_obj)
                 save_user_data(user_id, st.session_state.data)
                 st.success("Task added successfully!")
-                # Clear the input
                 st.session_state["new_todo_task"] = ""
 
         st.markdown("---")
@@ -1111,7 +1097,6 @@ with tab_todo:
                 if col2.button("Delete", key="del_" + task["id"]):
                     st.session_state.data["todo"].remove(task)
                     save_user_data(user_id, st.session_state.data)
-                    # Use a fallback for rerun
                     if hasattr(st, "experimental_rerun"):
                         st.experimental_rerun()
                     else:
@@ -1163,7 +1148,9 @@ with tab_todo:
 
     # ------------------- COMPLETED TASKS BY DATE -------------------
     with todo_main_tabs[2]:
-        st.subheader("Show Completed Tasks by Date")
+        st.subheader("Completed Tasks by Date")
+        st.write("Below is a list of completed tasks, grouped by date (newest first).")
+
         completed_tasks = [
             task for task in st.session_state.data["todo"] 
             if task.get("completed") and task.get("completed_at")
@@ -1179,7 +1166,10 @@ with tab_todo:
                 except Exception:
                     continue
                 grouped_tasks.setdefault(date_str, []).append(task["task"])
+
+            # Sort dates in descending order
             for date_str in sorted(grouped_tasks.keys(), reverse=True):
-                st.markdown(f"### {date_str}")
-                for task_desc in grouped_tasks[date_str]:
+                st.markdown(f"### **{date_str}**")
+                for i, task_desc in enumerate(grouped_tasks[date_str], start=1):
                     st.markdown(f"- {task_desc}")
+                st.markdown("---")
