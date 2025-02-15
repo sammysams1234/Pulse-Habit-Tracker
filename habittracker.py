@@ -991,7 +991,7 @@ with tab_journal:
 
         # Show the daily summary (if any) only once here
         if daily_summary:
-            st.subheader("Daily Summary")
+            st.subheader("Auto-Generated Daily Summary")
             st.write(daily_summary)
 
     # ---------------- JOURNAL SUMMARY ----------------
@@ -1038,7 +1038,7 @@ with tab_journal:
                 st.markdown(f"**Cause:** {entry.get('cause', 'N/A')}")
                 summary_text = entry.get("summary")
                 if summary_text:
-                    st.markdown("#### Pulse AI Summary")
+                    st.markdown("#### Generated Summary")
                     st.markdown(summary_text)
                 st.markdown("---")  # horizontal line for clarity
 
