@@ -446,19 +446,6 @@ for habit in st.session_state.data["habits"]:
     update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
 
 # =====================================================
-# DISPLAY TOP-RIGHT: LOGGED IN USER INFO & LOGOUT BUTTON
-# =====================================================
-col_left, col_right = st.columns([3, 1])
-with col_right:
-    st.markdown(f"**Logged in as {st.session_state.username}**")
-    if st.button("Log Out"):
-        cookies.delete("login_token")
-        cookies.delete("username")
-        cookies.save()
-        st.session_state.logged_in = False
-        st.experimental_rerun()
-
-# =====================================================
 # CREATE TOP TABS (including the new "To Do List")
 # =====================================================
 tab_pulse, tab_analytics, tab_journal, tab_todo = st.tabs([
