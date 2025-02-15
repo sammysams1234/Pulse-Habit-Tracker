@@ -1101,7 +1101,7 @@ with tab_todo:
 
         # Default daily summary of completed tasks
         st.markdown("---")
-        st.subheader("Daily Completed Tasks Summary")
+        st.subheader("Auto-Generated Daily Completed Tasks Summary")
         completed_today = filter_tasks_by_period(st.session_state.data["todo"], "Daily", today)
         if completed_today:
             grouped_text = get_grouped_tasks_summary(completed_today)
