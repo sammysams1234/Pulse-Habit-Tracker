@@ -612,8 +612,6 @@ with tab_analytics:
             col = cols[idx % 3]
             col.metric(label=habit, value=value_str, delta=delta_str)
 
-        st.markdown("---")  # a simple horizontal rule
-
         weekly_sub_tabs = st.tabs(["Progress Bar Chart", "Progress Heatmap"])
 
         with weekly_sub_tabs[0]:
