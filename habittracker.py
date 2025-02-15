@@ -388,7 +388,7 @@ def filter_tasks_by_period(tasks, period, today):
 
     if period == "Weekly":
         start = today - datetime.timedelta(days=today.weekday())
-        end = start + datetime.timedelta(days=6)
+        end = today + datetime.timedelta(days=6 - today.weekday())
     elif period == "Monthly":
         start = today.replace(day=1)
         end = today.replace(day=calendar.monthrange(today.year, today.month)[1])
@@ -529,7 +529,10 @@ with tab_pulse:
             st.session_state.new_habit_input = ""
             st.session_state.new_goal_input = 1
             st.session_state.new_color_input = "#000000"
-            st.experimental_rerun()
+            if hasattr(st, "experimental_rerun"):
+                st.experimental_rerun()
+            else:
+                st.stop()
 
         st.button("Add Habit", on_click=add_habit_callback)
 
@@ -1074,7 +1077,10 @@ with tab_todo:
             save_user_data(user_id, st.session_state.data)
             st.success("Task added successfully!")
             st.session_state.new_todo_task = ""
-            st.experimental_rerun()
+            if hasattr(st, "experimental_rerun"):
+                st.experimental_rerun()
+            else:
+                st.stop()
 
         st.button("Add Task", on_click=add_todo_callback)
 
