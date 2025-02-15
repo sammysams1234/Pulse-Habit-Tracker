@@ -528,12 +528,12 @@ with tab_pulse:
                 st.session_state["new_habit_input"] = ""
                 st.session_state["new_goal_input"] = 1
                 st.session_state["new_color_input"] = "#000000"
-                if hasattr(st, "experimental_rerun"):
-                    st.experimental_rerun()
+                st.experimental_rerun()
 
         st.subheader("Manage Habits")
         if st.session_state.data["habits"]:
             habits_list = list(st.session_state.data["habits"].keys())
+            remove_habit = None  # flag for habit removal
             for habit in habits_list:
                 current_goal = int(st.session_state.data["goals"].get(habit, 0))
 
@@ -572,18 +572,18 @@ with tab_pulse:
                     st.success(f"Updated habit '{habit}' successfully!")
 
                 if col5.button("Remove", key=f"remove_{habit}"):
-                    st.session_state.data["habits"].pop(habit, None)
-                    st.session_state.data["goals"].pop(habit, None)
-                    if "streaks" in st.session_state.data and habit in st.session_state.data["streaks"]:
-                        st.session_state.data["streaks"].pop(habit, None)
-                    if "habit_colors" in st.session_state.data and habit in st.session_state.data["habit_colors"]:
-                        st.session_state.data["habit_colors"].pop(habit, None)
-                    save_user_data(user_id, st.session_state.data)
-                    st.success(f"Habit '{habit}' removed successfully!")
-                    if hasattr(st, "experimental_rerun"):
-                        st.experimental_rerun()
-                    else:
-                        st.stop()
+                    remove_habit = habit
+                    break
+            if remove_habit:
+                st.session_state.data["habits"].pop(remove_habit, None)
+                st.session_state.data["goals"].pop(remove_habit, None)
+                if "streaks" in st.session_state.data and remove_habit in st.session_state.data["streaks"]:
+                    st.session_state.data["streaks"].pop(remove_habit, None)
+                if "habit_colors" in st.session_state.data and remove_habit in st.session_state.data["habit_colors"]:
+                    st.session_state.data["habit_colors"].pop(remove_habit, None)
+                save_user_data(user_id, st.session_state.data)
+                st.success(f"Habit '{remove_habit}' removed successfully!")
+                st.experimental_rerun()
         else:
             st.info("You currently have no habits you are tracking. Please add one above.")
 
@@ -624,6 +624,7 @@ with tab_pulse:
 
                     save_user_data(user_id, st.session_state.data)
                     update_streaks_for_habit(user_id, habit, st.session_state.data["habits"][habit], today)
+                    st.experimental_rerun()
 
             streak_data = st.session_state.data.get("streaks", {}).get(habit, {})
             current_streak = streak_data.get("current", 0)
@@ -1070,12 +1071,13 @@ with tab_todo:
                     st.session_state.data["todo"].append(task_obj)
                     save_user_data(user_id, st.session_state.data)
                     st.success("Task added successfully!")
-                    if hasattr(st, "experimental_rerun"):
-                        st.experimental_rerun()
+                    st.experimental_rerun()
 
         st.markdown("---")
         if "todo" in st.session_state.data and st.session_state.data["todo"]:
-            for task in st.session_state.data["todo"]:
+            delete_task_id = None  # flag for deletion
+            # Iterate over a copy so that removal does not affect the loop
+            for task in st.session_state.data["todo"][:]:
                 col1, col2, col3 = st.columns([6, 1, 1])
                 new_completed = col1.checkbox(task["task"], value=task.get("completed", False), key=task["id"])
                 if new_completed != task.get("completed", False):
@@ -1087,12 +1089,12 @@ with tab_todo:
                     save_user_data(user_id, st.session_state.data)
 
                 if col2.button("Delete", key="del_" + task["id"]):
-                    st.session_state.data["todo"].remove(task)
-                    save_user_data(user_id, st.session_state.data)
-                    if hasattr(st, "experimental_rerun"):
-                        st.experimental_rerun()
-                    else:
-                        st.stop()
+                    delete_task_id = task["id"]
+                    break
+            if delete_task_id:
+                st.session_state.data["todo"] = [t for t in st.session_state.data["todo"] if t["id"] != delete_task_id]
+                save_user_data(user_id, st.session_state.data)
+                st.experimental_rerun()
         else:
             st.info("No tasks added yet. You can add one by entering a new task above!")
 
