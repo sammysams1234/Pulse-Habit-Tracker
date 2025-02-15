@@ -505,7 +505,7 @@ with tab_pulse:
     with st.expander("Manage Habits", expanded=False):
         st.subheader("Add Habit")
         new_habit = st.text_input("Habit", key="new_habit_input")
-        new_goal = st.number_input("Set Weekly Goal", min_value=1, value=1, key="new_goal_input")
+        new_goal = st.number_input("Set Weekly Goal (# times you would like to hit the habit each week)", min_value=1, value=1, key="new_goal_input")
         new_color = st.color_picker("Pick a color (optional)", value="#000000", key="new_color_input")
 
         if st.button("Add Habit"):
@@ -1081,25 +1081,43 @@ with tab_todo:
                 st.session_state["new_todo_task"] = ""
 
         st.markdown("---")
+    
+    # Ensure an editing marker is initialized
+        if "editing_todo" not in st.session_state:
+            st.session_state.editing_todo = None
+
         if "todo" in st.session_state.data and st.session_state.data["todo"]:
             for task in st.session_state.data["todo"]:
-                col1, col2, col3 = st.columns([6, 1, 1])
-                new_completed = col1.checkbox(task["task"], value=task.get("completed", False), key=task["id"])
-                if new_completed != task.get("completed", False):
-                    task["completed"] = new_completed
-                    if new_completed:
-                        task["completed_at"] = datetime.datetime.now().isoformat()
-                    else:
-                        task["completed_at"] = None
-                    save_user_data(user_id, st.session_state.data)
-
-                if col2.button("Delete", key="del_" + task["id"]):
-                    st.session_state.data["todo"].remove(task)
-                    save_user_data(user_id, st.session_state.data)
-                    if hasattr(st, "experimental_rerun"):
+            # Check if this task is being edited
+                if st.session_state.editing_todo == task["id"]:
+                    col1, col2, col3 = st.columns([6, 1, 1])
+                    new_task_text = col1.text_input("Edit Task", value=task["task"], key="edit_input_"+task["id"])
+                    if col2.button("Save", key="save_"+task["id"]):
+                        task["task"] = new_task_text
+                        save_user_data(user_id, st.session_state.data)
+                        st.session_state.editing_todo = None
                         st.experimental_rerun()
-                    else:
-                        st.stop()
+                    if col3.button("Cancel", key="cancel_"+task["id"]):
+                        st.session_state.editing_todo = None
+                        st.experimental_rerun()
+                else:
+                    col1, col2, col3, col4 = st.columns([5, 1, 1, 1])
+                # Display the task with a checkbox for completed status
+                    new_completed = col1.checkbox(task["task"], value=task.get("completed", False), key=task["id"])
+                    if new_completed != task.get("completed", False):
+                        task["completed"] = new_completed
+                        if new_completed:
+                            task["completed_at"] = datetime.datetime.now().isoformat()
+                        else:
+                            task["completed_at"] = None
+                        save_user_data(user_id, st.session_state.data)
+                    if col2.button("Edit", key="edit_"+task["id"]):
+                        st.session_state.editing_todo = task["id"]
+                        st.experimental_rerun()
+                    if col3.button("Delete", key="del_"+task["id"]):
+                        st.session_state.data["todo"].remove(task)
+                        save_user_data(user_id, st.session_state.data)
+                        st.experimental_rerun()
         else:
             st.info("No tasks added yet.")
 
