@@ -1067,7 +1067,7 @@ with tab_analytics:
                 text=heatmap_data_yearly,
                 hovertext=hover_data_yearly,
                 hoverinfo="text",
-                colorscale="Blues",
+                colorscale="Greens",
                 showscale=True
             ))
             fig_heatmap_yearly.update_layout(
