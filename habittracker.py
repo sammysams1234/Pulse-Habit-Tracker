@@ -1044,41 +1044,31 @@ with tab_analytics:
             month_names = [calendar.month_abbr[m] for m in range(1, 13)]
             heatmap_data_yearly = []
             hover_data_yearly = []
-            text_data_yearly = []
             for habit in st.session_state.data["habits"].keys():
-                monthly_color_values = []
+                monthly_counts = []
                 monthly_hover = []
-                monthly_text = []
                 for m in range(1, 13):
-            # Get the number of successes in month m of the current year
+                    # Get the number of successes in month m of the current year
                     start_date = datetime.date(current_year, m, 1)
                     end_day = calendar.monthrange(current_year, m)[1]
                     end_date = datetime.date(current_year, m, end_day)
                     mask = (df["date"].dt.date >= start_date) & (df["date"].dt.date <= end_date)
                     habit_mask = df[mask]["habit"] == habit
                     count = df[mask][habit_mask].shape[0]
-            # For coloring, assign 0 when no data (to color it light gray) and 1 when there is any data
-                    monthly_color_values.append(0 if count == 0 else 1)
+                    monthly_counts.append(count)
                     monthly_hover.append(f"{month_names[m-1]}: {count} successes")
-                    monthly_text.append(str(count))
-                heatmap_data_yearly.append(monthly_color_values)
+                heatmap_data_yearly.append(monthly_counts)
                 hover_data_yearly.append(monthly_hover)
-                text_data_yearly.append(monthly_text)
-    
+            
             fig_heatmap_yearly = go.Figure(data=go.Heatmap(
                 z=heatmap_data_yearly,
                 x=month_names,
                 y=list(st.session_state.data["habits"].keys()),
-                text=text_data_yearly,
+                text=heatmap_data_yearly,
                 hovertext=hover_data_yearly,
                 hoverinfo="text",
-                colorscale=[
-                    [0.0, "#eaeaea"],  # No data: light gray
-                    [1.0, "#4BB543"]   # Some data: green
-                ],
-                zmin=0,
-                zmax=1,
-                showscale=False
+                colorscale="Greens",
+                showscale=True
             ))
             fig_heatmap_yearly.update_layout(
                 xaxis=dict(showgrid=False),
@@ -1086,6 +1076,7 @@ with tab_analytics:
                 template="plotly_white"
             )
             st.plotly_chart(fig_heatmap_yearly, use_container_width=True, key="yearly_heatmap_chart")
+
 # =====================================================
 # TAB: JOURNAL (Well Being Journal)
 # =====================================================
