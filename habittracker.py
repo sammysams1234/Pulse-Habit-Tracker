@@ -1076,7 +1076,8 @@ with tab_journal:
     with journal_main_tabs[0]:
         today = datetime.date.today()
         today_str = today.strftime("%Y-%m-%d")
-        st.subheader(f"Journal Entry for Today")
+        st.markdown("<h3 style='color:#0096FF'>Journal Entry for Today</h3>", unsafe_allow_html=True)
+        #st.subheader(f"Journal Entry for Today")
 
         existing_entry = get_journal_entry(today_str)
         default_feeling = existing_entry.get("feeling", "") if existing_entry else ""
