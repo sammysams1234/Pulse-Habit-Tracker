@@ -1186,7 +1186,7 @@ with tab_todo:
         st.markdown("---")
         if "todo" in st.session_state.data and st.session_state.data["todo"]:
             for task in st.session_state.data["todo"]:
-                col1, col2, col3 = st.columns([6, 1, 1])
+                col1, col2, col3 = st.columns([6, 0.5, 2])
                 new_completed = col1.checkbox(task["task"], value=task.get("completed", False), key=task["id"])
                 if new_completed != task.get("completed", False):
                     task["completed"] = new_completed
