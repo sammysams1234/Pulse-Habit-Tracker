@@ -1196,7 +1196,7 @@ with tab_todo:
                         task["completed_at"] = None
                     save_user_data(user_id, st.session_state.data)
 
-                if col2.button("Delete", key="del_" + task["id"]):
+                if col3.button("Delete", key="del_" + task["id"]):
                     st.session_state.data["todo"].remove(task)
                     save_user_data(user_id, st.session_state.data)
                     if hasattr(st, "experimental_rerun"):
