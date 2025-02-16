@@ -471,7 +471,7 @@ for habit in st.session_state.data["habits"]:
 # -----------------------------------------------------
 top_col_left, top_col_right = st.columns([0.8, 0.2])
 with top_col_right:
-    st.markdown(f"**Logged in as {user_id}**")
+    st.markdown(f"**Logged in as <span style='color:#BF40BF'>{user_id}</span>**", unsafe_allow_html=True)
     if st.button("Logout"):
         st.session_state.logged_in = False
         cookies["login_token"] = ""
@@ -765,7 +765,6 @@ with tab_analytics:
                 heatmap_data_weekly.append(row)
                 hover_data_weekly.append(hover_row)
 
-            # Removed text and texttemplate to eliminate tick/cross symbols
             fig_heatmap_weekly = go.Figure(data=go.Heatmap(
                 z=heatmap_data_weekly,
                 x=[day.strftime("%a") for day in week_dates],
@@ -908,7 +907,6 @@ with tab_analytics:
                 heatmap_data.append(row)
                 hover_data.append(hover_row)
 
-            # Removed text and texttemplate to eliminate tick/cross symbols
             fig_heatmap = go.Figure(data=go.Heatmap(
                 z=heatmap_data,
                 x=[str(day.day) for day in days],
@@ -977,7 +975,6 @@ with tab_analytics:
         summary_compare = pd.merge(current_summary, prev_summary, on="habit", how="outer").fillna(0)
         summary_compare["current_success_count"] = summary_compare["current_success_count"].astype(int)
         summary_compare["prev_success_count"] = summary_compare["prev_success_count"].astype(int)
-        # Estimate yearly goal based on weekly goal scaled to the year
         summary_compare["goal"] = summary_compare["habit"].apply(
             lambda h: int(st.session_state.data["goals"].get(h, 0) / 7 * year_length)
         )
@@ -1024,7 +1021,6 @@ with tab_analytics:
             st.plotly_chart(fig_compare, use_container_width=True, key="yearly_bar_chart")
 
         # --- YEARLY HEATMAP ---
-        # For the yearly heatmap, we aggregate monthly successes for each habit.
         with yearly_sub_tabs[1]:
             month_names = [calendar.month_abbr[m] for m in range(1, 13)]
             heatmap_data_yearly = []
@@ -1033,7 +1029,6 @@ with tab_analytics:
                 monthly_counts = []
                 monthly_hover = []
                 for m in range(1, 13):
-                    # Get the number of successes in month m of the current year
                     start_date = datetime.date(current_year, m, 1)
                     end_day = calendar.monthrange(current_year, m)[1]
                     end_date = datetime.date(current_year, m, end_day)
@@ -1077,7 +1072,6 @@ with tab_journal:
         today = datetime.date.today()
         today_str = today.strftime("%Y-%m-%d")
         st.markdown("<h3 style='color:#0096FF'>Journal Entry for Today</h3>", unsafe_allow_html=True)
-        #st.subheader(f"Journal Entry for Today")
 
         existing_entry = get_journal_entry(today_str)
         default_feeling = existing_entry.get("feeling", "") if existing_entry else ""
@@ -1104,10 +1098,12 @@ with tab_journal:
 
                 save_journal_entry(today_str, entry)
 
-        # Updated heading level to be smaller than the date heading
+        # Always show the auto-generated summary heading with a friendly message if no summary exists.
+        st.write("#### Auto-Generated Daily Summary")
         if daily_summary:
-            st.write("#### Auto-Generated Daily Summary")
             st.write(daily_summary)
+        else:
+            st.info("Your journal entry hasn't been saved yet. Once you fill out and save your entry, an auto-generated summary will appear here.")
 
     # ---------------- JOURNAL SUMMARY ----------------
     with journal_main_tabs[1]:
@@ -1145,13 +1141,11 @@ with tab_journal:
         else:
             for date_str in sorted(all_entries.keys(), reverse=True):
                 entry = all_entries[date_str]
-                #st.markdown(f"### **{date_str}**")
                 st.markdown(f"<h3 style='color:#0096FF'>{date_str}</h3>", unsafe_allow_html=True)
                 st.markdown(f"**Feeling:** {entry.get('feeling', 'N/A')}")
                 st.markdown(f"**Cause:** {entry.get('cause', 'N/A')}")
                 summary_text = entry.get("summary")
                 if summary_text:
-                    #st.write("##### Auto-Generated Summary")
                     st.markdown("<h5 style='color:#BF40BF'>Auto-Generated Summary</h5>", unsafe_allow_html=True)
                     st.markdown(summary_text)
                 st.markdown("---")
@@ -1166,7 +1160,6 @@ with tab_todo:
 
     # ------------------- TASKS -------------------
     with todo_main_tabs[0]:
-        # Removed the "Your To-Do List" header as requested
         with st.form("todo_form"):
             new_task = st.text_input("Enter a new task", key="new_todo_task")
             submit_task = st.form_submit_button("Add Task")
