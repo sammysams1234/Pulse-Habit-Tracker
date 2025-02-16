@@ -1207,7 +1207,8 @@ with tab_todo:
             st.info("No tasks added yet. You can add one by entering a new task above!")
 
         st.markdown("---")
-        st.subheader("Auto-Generated Daily Completed Tasks Summary")
+        #st.subheader("Auto-Generated Daily Completed Tasks Summary")
+        st.markdown("<h4 style='color: #BF40BF;'>Auto-Generated Daily Completed Tasks Summary</h4>", unsafe_allow_html=True)
         completed_today = filter_tasks_by_period(st.session_state.data["todo"], "Daily", today)
         if completed_today:
             grouped_text = get_grouped_tasks_summary(completed_today)
