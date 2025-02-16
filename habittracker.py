@@ -534,7 +534,8 @@ with tab_pulse:
             for habit in habits_list:
                 current_goal = int(st.session_state.data["goals"].get(habit, 0))
 
-                col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 1, 1])
+                # Updated columns: increased width for update and remove buttons
+                col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 2, 2])
                 new_name_val = col1.text_input("Habit name", value=habit, key=f"edit_habit_name_{habit}")
                 new_goal_val = col2.number_input(
                     "Weekly goal", 
@@ -743,40 +744,32 @@ with tab_analytics:
             week_dates = [current_week_start + datetime.timedelta(days=i) for i in range(7)]
             heatmap_data_weekly = []
             hover_data_weekly = []
-            display_data_weekly = []
 
             for habit in st.session_state.data["habits"].keys():
                 row = []
                 hover_row = []
-                display_row = []
                 for day in week_dates:
                     day_str = day.strftime("%Y-%m-%d")
                     outcome = st.session_state.data["habits"][habit].get(day_str)
                     if outcome == "succeeded":
                         val = 2
                         hover_txt = f"{day_str}: Succeeded"
-                        disp_txt = "✓"
                     elif outcome == "failed":
                         val = 1
                         hover_txt = f"{day_str}: Failed"
-                        disp_txt = "X"
                     else:
                         val = 0
                         hover_txt = f"{day_str}: No Data"
-                        disp_txt = " "
                     row.append(val)
                     hover_row.append(hover_txt)
-                    display_row.append(disp_txt)
                 heatmap_data_weekly.append(row)
                 hover_data_weekly.append(hover_row)
-                display_data_weekly.append(display_row)
 
+            # Removed text and texttemplate to eliminate tick/cross symbols
             fig_heatmap_weekly = go.Figure(data=go.Heatmap(
                 z=heatmap_data_weekly,
                 x=[day.strftime("%a") for day in week_dates],
                 y=list(st.session_state.data["habits"].keys()),
-                text=display_data_weekly,
-                texttemplate="%{text}",
                 hovertext=hover_data_weekly,
                 hoverinfo="text",
                 colorscale=[
@@ -894,40 +887,32 @@ with tab_analytics:
             days = [datetime.date(year, month, d) for d in range(1, num_days+1)]
             heatmap_data = []
             hover_data = []
-            display_data = []
 
             for habit in st.session_state.data["habits"].keys():
                 row = []
                 hover_row = []
-                disp_row = []
                 for day in days:
                     day_str = day.strftime("%Y-%m-%d")
                     outcome = st.session_state.data["habits"][habit].get(day_str)
                     if outcome == "succeeded":
                         val = 2
                         hover_txt = f"{day_str}: Succeeded"
-                        disp_txt = "✓"
                     elif outcome == "failed":
                         val = 1
                         hover_txt = f"{day_str}: Failed"
-                        disp_txt = "X"
                     else:
                         val = 0
                         hover_txt = f"{day_str}: No Data"
-                        disp_txt = " "
                     row.append(val)
                     hover_row.append(hover_txt)
-                    disp_row.append(disp_txt)
                 heatmap_data.append(row)
                 hover_data.append(hover_row)
-                display_data.append(disp_row)
 
+            # Removed text and texttemplate to eliminate tick/cross symbols
             fig_heatmap = go.Figure(data=go.Heatmap(
                 z=heatmap_data,
                 x=[str(day.day) for day in days],
                 y=list(st.session_state.data["habits"].keys()),
-                text=display_data,
-                texttemplate="%{text}",
                 hovertext=hover_data,
                 hoverinfo="text",
                 colorscale=[
@@ -1118,8 +1103,9 @@ with tab_journal:
 
                 save_journal_entry(today_str, entry)
 
+        # Updated heading level to be smaller than the date heading
         if daily_summary:
-            st.write("# Auto-Generated Daily Summary")
+            st.write("#### Auto-Generated Daily Summary")
             st.write(daily_summary)
 
     # ---------------- JOURNAL SUMMARY ----------------
@@ -1177,8 +1163,7 @@ with tab_todo:
 
     # ------------------- TASKS -------------------
     with todo_main_tabs[0]:
-        st.subheader("Your To-Do List")
-        # Use a form so the input clears automatically on submission
+        # Removed the "Your To-Do List" header as requested
         with st.form("todo_form"):
             new_task = st.text_input("Enter a new task", key="new_todo_task")
             submit_task = st.form_submit_button("Add Task")
