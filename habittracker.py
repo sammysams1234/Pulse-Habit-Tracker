@@ -1163,7 +1163,7 @@ with tab_journal:
                 st.markdown(f"**Cause:** {entry.get('cause', 'N/A')}")
                 summary_text = entry.get("summary")
                 if summary_text:
-                    st.markdown("#### Auto-Generated Summary")
+                    st.write("#### Auto-Generated Summary")
                     st.markdown(summary_text)
                 st.markdown("---")
 
