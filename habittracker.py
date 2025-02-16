@@ -1144,7 +1144,8 @@ with tab_journal:
         else:
             for date_str in sorted(all_entries.keys(), reverse=True):
                 entry = all_entries[date_str]
-                st.markdown(f"### **{date_str}**")
+                #st.markdown(f"### **{date_str}**")
+                st.markdown(f"<h3 style='color:#0096FF'>{date_str}</h3>", unsafe_allow_html=True)
                 st.markdown(f"**Feeling:** {entry.get('feeling', 'N/A')}")
                 st.markdown(f"**Cause:** {entry.get('cause', 'N/A')}")
                 summary_text = entry.get("summary")
