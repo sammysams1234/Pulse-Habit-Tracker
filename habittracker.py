@@ -1099,7 +1099,8 @@ with tab_journal:
                 save_journal_entry(today_str, entry)
 
         # Always show the auto-generated summary heading with a friendly message if no summary exists.
-        st.write("#### Auto-Generated Daily Summary")
+        #st.write("#### Auto-Generated Daily Summary")
+        st.markdown("<h4 style='color: #BF40BF;'>Auto-Generated Daily Summary</h4>", unsafe_allow_html=True)
         if daily_summary:
             st.write(daily_summary)
         else:
