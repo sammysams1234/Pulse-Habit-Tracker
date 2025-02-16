@@ -568,7 +568,7 @@ with tab_pulse:
                     save_user_data(user_id, st.session_state.data)
                     st.success(f"Updated habit '{habit}' successfully!")
 
-                if col5.button("Remove ", key=f"remove_{habit}"):
+                if col5.button("Remove", key=f"remove_{habit}"):
                     st.session_state.data["habits"].pop(habit, None)
                     st.session_state.data["goals"].pop(habit, None)
                     if "streaks" in st.session_state.data and habit in st.session_state.data["streaks"]:
@@ -1119,7 +1119,7 @@ with tab_journal:
                 save_journal_entry(today_str, entry)
 
         if daily_summary:
-            st.subheader("Auto-Generated Daily Summary")
+            st.write("# Auto-Generated Daily Summary")
             st.write(daily_summary)
 
     # ---------------- JOURNAL SUMMARY ----------------
