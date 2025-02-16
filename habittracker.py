@@ -1151,7 +1151,7 @@ with tab_journal:
                 summary_text = entry.get("summary")
                 if summary_text:
                     #st.write("##### Auto-Generated Summary")
-                    st.markdown("<h5 style='color:#0096FF'>Auto-Generated Summary</h5>", unsafe_allow_html=True)
+                    st.markdown("<h5 style='color:#BF40BF'>Auto-Generated Summary</h5>", unsafe_allow_html=True)
                     st.markdown(summary_text)
                 st.markdown("---")
 
