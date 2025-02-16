@@ -1262,7 +1262,7 @@ with tab_todo:
                 grouped_tasks.setdefault(date_str, []).append(task["task"])
 
             for date_str in sorted(grouped_tasks.keys(), reverse=True):
-                st.markdown("<h3 style='color:#0096FF'>{today_str}</h3>", unsafe_allow_html=True)
+                st.markdown(f"<h3 style='color:#0096FF'>{date_str}</h3>", unsafe_allow_html=True)
                 for i, task_desc in enumerate(grouped_tasks[date_str], start=1):
                     st.markdown(f"- {task_desc}")
                 st.markdown("---")
